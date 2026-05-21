@@ -1,0 +1,28 @@
+[package]
+name = "athan"
+version = "0.1.0"
+edition = "2024"
+description = "Lightweight and modern Islamic prayer times app"
+
+[profile.dev]
+debug = 0
+strip = true
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[dependencies]
+time = { version = "0.3", features = ["formatting"] }
+icu_calendar = { version = "2.2", default-features = false, features = ["compiled_data"] }
+minreq = { version = "2.14", features = ["json-using-serde"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["rt"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool", "wayland"] }
+
+[target.'cfg(not(target_os = "linux"))'.dependencies]
+iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool"] }
