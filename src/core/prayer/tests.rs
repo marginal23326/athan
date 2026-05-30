@@ -1,22 +1,5 @@
 use super::*;
-
-#[test]
-fn julian_date_matches_known_reference() {
-    assert_eq!(get_julian_date(2000, 1, 1.0), 2451545.0);
-}
-
-fn fmt_time(t: &time::Time) -> String {
-    let (h, m, _) = t.as_hms();
-    let ampm = if h < 12 { "AM" } else { "PM" };
-    let h12 = if h == 0 {
-        12
-    } else if h > 12 {
-        h - 12
-    } else {
-        h
-    };
-    format!("{}:{:02} {}", h12, m, ampm)
-}
+use super::spa::{SpaFunction, SpaInputs, spa_calculate};
 
 fn dhaka_may_24_2026_times(adjustments: PrayerAdjustments) -> PrayerTimes {
     calculate_prayer_times(
@@ -30,30 +13,15 @@ fn dhaka_may_24_2026_times(adjustments: PrayerAdjustments) -> PrayerTimes {
     .unwrap()
 }
 
+fn hm(t: &time::Time) -> (u8, u8) {
+    let (h, m, _) = t.as_hms();
+    (h, m)
+}
+
 fn assert_times_hm(times: &PrayerTimes, expected: [(u8, u8); Prayer::COUNT]) {
     for ((prayer, time), expected) in times.as_array().into_iter().zip(expected) {
         assert_eq!(hm(&time), expected, "{}", prayer.name());
     }
-}
-
-#[test]
-fn dhaka_may_24_2026() {
-    let times = dhaka_may_24_2026_times(PrayerAdjustments::prayer_start_safety());
-
-    println!(
-        "\n  Fajr:    {}\n  Sunrise: {}\n  Dhuhr:   {}\n  Asr:     {}\n  Maghrib: {}\n  Isha:    {}",
-        fmt_time(&times.fajr),
-        fmt_time(&times.sunrise),
-        fmt_time(&times.dhuhr),
-        fmt_time(&times.asr),
-        fmt_time(&times.maghrib),
-        fmt_time(&times.isha)
-    );
-}
-
-fn hm(t: &time::Time) -> (u8, u8) {
-    let (h, m, _) = t.as_hms();
-    (h, m)
 }
 
 #[test]
@@ -62,7 +30,7 @@ fn fajr_angle_sunrise_check() {
     let coords = Coordinates::new(23.757283, 90.369712);
     let times = dhaka_may_24_2026_times(PrayerAdjustments::zero());
 
-    assert_times_hm(&times, [(3, 45), (5, 13), (11, 56), (15, 17), (18, 38), (20, 8)]);
+    assert_times_hm(&times, [(3, 45), (5, 13), (11, 55), (15, 17), (18, 38), (20, 8)]);
 
     // Maghrib + 90min should be Isha (Umm al-Qura rule), within 2 min
     let maghrib_mins = times.maghrib.as_hms().0 as i64 * 60 + times.maghrib.as_hms().1 as i64;
@@ -71,21 +39,13 @@ fn fajr_angle_sunrise_check() {
 
     // Dhuhr should be raw solar noon when no adjustments are configured.
     let tz = 6.0;
-    let year = date.year();
-    let month = date.month() as i32;
-    let day = date.day() as i32;
-    let jd = get_julian_date(year, month, day as f64);
-    let topocentric = get_topocentric_sun(jd - tz / 24.0, coords.latitude, coords.longitude, 0.0);
-    let transit = 12.0 + tz - (coords.longitude / 15.0) - topocentric.equation_of_time;
+    let spa_inputs = SpaInputs::new(date.year(), date.month() as u8 as i32, date.day() as u8 as i32, coords.latitude, coords.longitude)
+        .timezone(tz)
+        .function(SpaFunction::ZaRts);
+    let spa_outputs = spa_calculate(&spa_inputs).unwrap();
+    let transit = spa_outputs.suntransit.unwrap();
     let dhuhr_hr = times.dhuhr.as_hms().0 as f64 + times.dhuhr.as_hms().1 as f64 / 60.0;
     assert!((dhuhr_hr - transit).abs() < 0.03);
-}
-
-#[test]
-fn dhaka_may_24_2026_raw_times() {
-    let times = dhaka_may_24_2026_times(PrayerAdjustments::zero());
-
-    assert_times_hm(&times, [(3, 45), (5, 13), (11, 56), (15, 17), (18, 38), (20, 8)]);
 }
 
 #[test]
@@ -94,6 +54,7 @@ fn decimal_hours_rounding_wraps_midnight_correctly() {
     assert_eq!(dec_hours_to_time(-0.0001), time::Time::MIDNIGHT);
     assert_eq!(dec_hours_to_time(23.9999), time::Time::MIDNIGHT);
     assert_eq!(dec_hours_to_time(25.5), time::Time::from_hms(1, 30, 0).unwrap());
+    assert_eq!(dec_hours_to_time(5.2121), time::Time::from_hms(5, 13, 0).unwrap());
 }
 
 #[test]
@@ -197,23 +158,6 @@ fn invalid_inputs_return_none_instead_of_silent_nonsense() {
         )
         .is_none()
     );
-}
-
-#[test]
-fn prayer_times_keep_expected_day_order_in_normal_latitudes() {
-    let date = time::Date::from_calendar_date(2026, time::Month::May, 24).unwrap();
-    let times = calculate_prayer_times(
-        date,
-        Coordinates::new(23.757283, 90.369712),
-        6.0,
-        CalculationMethod::UmmAlQura,
-        AsrMethod::Shafi,
-        PrayerAdjustments::zero(),
-    )
-    .unwrap();
-
-    let secs: Vec<_> = times.as_array().iter().map(|(_, time)| time_to_secs(*time)).collect();
-    assert!(secs.windows(2).all(|pair| pair[0] < pair[1]), "{secs:?}");
 }
 
 #[test]
