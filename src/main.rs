@@ -17,6 +17,7 @@ enum Message {
     LatitudeChanged(String),
     LongitudeChanged(String),
     TimezoneChanged(String),
+    ElevationChanged(String),
     ToggleSettings,
     ToggleArabic,
     ToggleHijri,
@@ -34,6 +35,7 @@ struct SettingsState {
     pub lat_input: String,
     pub lon_input: String,
     pub tz_input: String,
+    pub elv_input: String,
     pub loc_name_input: String,
     pub adjustment_inputs: [String; Prayer::COUNT],
 }
@@ -44,6 +46,7 @@ struct LocationData {
     lat: f64,
     lon: f64,
     offset: f64,
+    elevation: f64,
 }
 
 struct App {
@@ -90,6 +93,7 @@ impl Default for App {
                 lat_input: loc.coordinates.latitude.to_string(),
                 lon_input: loc.coordinates.longitude.to_string(),
                 tz_input: loc.timezone_offset.to_string(),
+                elv_input: loc.elevation.to_string(),
                 loc_name_input: loc.name.clone(),
                 adjustment_inputs: Prayer::ALL.map(|prayer| adjustments.get(prayer).to_string()),
             },
@@ -183,6 +187,13 @@ fn update(app: &mut App, msg: Message) -> Task<Message> {
                 app.recalculate();
             }
         }
+        Message::ElevationChanged(s) => {
+            app.inputs.elv_input = s.clone();
+            if let Ok(v) = s.parse::<f64>() {
+                app.location.elevation = v;
+                app.recalculate();
+            }
+        }
         Message::LocationNameChanged(s) => {
             app.inputs.loc_name_input = s.clone();
             app.location.name = s;
@@ -221,11 +232,34 @@ fn update(app: &mut App, msg: Message) -> Task<Message> {
                     return Err(api.message.unwrap_or_else(|| "Unknown error".into()));
                 }
 
+                let lat = api.lat.unwrap_or(0.0);
+                let lon = api.lon.unwrap_or(0.0);
+
+                let elevation = tokio::task::spawn_blocking(move || {
+                    minreq::get(format!(
+                        "https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lon}"
+                    ))
+                    .send()
+                })
+                .await
+                .ok()
+                .and_then(|r| r.ok())
+                .and_then(|r| {
+                    #[derive(serde::Deserialize)]
+                    struct ElevationResponse {
+                        elevation: Vec<f64>,
+                    }
+                    r.json::<ElevationResponse>().ok()
+                })
+                .and_then(|e| e.elevation.into_iter().next())
+                .unwrap_or(0.0);
+
                 Ok(LocationData {
                     name: api.city.unwrap_or_else(|| "Unknown".into()),
-                    lat: api.lat.unwrap_or(0.0),
-                    lon: api.lon.unwrap_or(0.0),
+                    lat,
+                    lon,
                     offset: api.offset.unwrap_or(0) as f64 / 3600.0,
+                    elevation,
                 })
             };
 
@@ -236,10 +270,12 @@ fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.inputs.lat_input = data.lat.to_string();
             app.inputs.lon_input = data.lon.to_string();
             app.inputs.tz_input = format!("{:.1}", data.offset);
+            app.inputs.elv_input = data.elevation.to_string();
             app.location.name = data.name;
             app.location.coordinates.latitude = data.lat;
             app.location.coordinates.longitude = data.lon;
             app.location.timezone_offset = data.offset;
+            app.location.elevation = data.elevation;
             app.recalculate();
         }
         Message::LocationDetected(Err(e)) => {
@@ -625,7 +661,8 @@ fn settings_modal(app: &App) -> Element<'_, Message> {
             labeled_input("Latitude", &app.inputs.lat_input, Message::LatitudeChanged),
             labeled_input("Longitude", &app.inputs.lon_input, Message::LongitudeChanged),
         ]
-        .spacing(12)
+        .spacing(12),
+        labeled_input("Elevation (m)", &app.inputs.elv_input, Message::ElevationChanged)
     ]
     .spacing(12);
 

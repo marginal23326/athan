@@ -31,6 +31,7 @@ pub fn calculate_daily_prayer_data(
             date,
             location.coordinates,
             location.timezone_offset,
+            location.elevation,
             method,
             asr_method,
             adjustments,

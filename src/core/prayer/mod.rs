@@ -68,7 +68,7 @@ struct SolarPosition {
     sunset: f64,
 }
 
-fn calculate_solar_position(date: time::Date, original_lat: f64, lon: f64, timezone_hours: f64) -> SolarPosition {
+fn calculate_solar_position(date: time::Date, original_lat: f64, lon: f64, timezone_hours: f64, elevation: f64) -> SolarPosition {
     let mut lat = original_lat;
 
     for i in 0..2 {
@@ -80,6 +80,7 @@ fn calculate_solar_position(date: time::Date, original_lat: f64, lon: f64, timez
             lon,
         )
         .timezone(timezone_hours)
+        .elevation(elevation)
         .function(SpaFunction::ZaRts);
 
         if let Ok(outputs) = spa_calculate(&inputs) {
@@ -178,6 +179,7 @@ pub fn calculate_prayer_times(
     date: time::Date,
     coords: Coordinates,
     timezone_hours: f64,
+    elevation: f64,
     method: CalculationMethod,
     asr_method: AsrMethod,
     adjustments: PrayerAdjustments,
@@ -190,7 +192,7 @@ pub fn calculate_prayer_times(
     let original_lat = coords.latitude;
     let lon = coords.longitude;
 
-    let solar = calculate_solar_position(date, original_lat, lon, timezone_hours);
+    let solar = calculate_solar_position(date, original_lat, lon, timezone_hours, elevation);
     let night_length = 24.0 - (solar.sunset - solar.sunrise);
 
     let ctx = AstroContext {

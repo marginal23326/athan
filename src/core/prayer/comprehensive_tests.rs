@@ -35,7 +35,7 @@ fn assert_all_times_valid(times: &PrayerTimes, label: &str) {
 
 fn calc_times(date: time::Date, coords: Coordinates, tz: f64, method: CalculationMethod) -> PrayerTimes {
     calculate_prayer_times(
-        date, coords, tz, method, AsrMethod::Shafi, PrayerAdjustments::zero(),
+        date, coords, tz, 0.0, method, AsrMethod::Shafi, PrayerAdjustments::zero(),
     )
     .unwrap_or_else(|| panic!("{method}: calculation returned None"))
 }
@@ -304,7 +304,7 @@ fn latitude_extremes_return_none_or_sensible() {
     let date = make_date(2026, time::Month::May, 24);
     for (label, lat) in [("North Pole", 90.0), ("South Pole", -90.0)] {
         if let Some(times) = calculate_prayer_times(
-            date, Coordinates::new(lat, 0.0), 0.0,
+            date, Coordinates::new(lat, 0.0), 0.0, 0.0,
             CalculationMethod::Mwl, AsrMethod::Shafi, PrayerAdjustments::zero(),
         ) {
             assert_all_times_valid(&times, label);

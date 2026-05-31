@@ -216,6 +216,7 @@ pub struct Location {
     pub name: String,
     pub coordinates: Coordinates,
     pub timezone_offset: f64,
+    pub elevation: f64,
 }
 
 impl Default for Location {
@@ -224,6 +225,7 @@ impl Default for Location {
             name: "Makkah".into(),
             coordinates: Coordinates::new(21.422_487, 39.826_206),
             timezone_offset: 3.0,
+            elevation: 0.0,
         }
     }
 }

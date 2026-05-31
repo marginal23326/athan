@@ -1,6 +1,8 @@
 use std::fmt;
 
 pub const SUN_RADIUS: f64 = 0.26667;
+const EARTH_RADIUS: f64 = 6378137.0;
+const EARTH_B_OVER_A: f64 = 0.9966471893352525;
 
 const SUN_TRANSIT: usize = 0;
 const SUN_RISE: usize = 1;
@@ -554,7 +556,9 @@ fn calculate_sun_rise_transit_set(inputs: &SpaInputs) -> Option<SunEventsOutputs
         delta[i] = daily_geo.delta;
     }
 
-    let h0_prime = -(SUN_RADIUS + inputs.atmos_refract);
+    // Dip of horizon below astronomical due to elevation h: acos(R/(R+h))
+    let dip = (EARTH_RADIUS / (EARTH_RADIUS + inputs.elevation)).acos().to_degrees();
+    let h0_prime = -(SUN_RADIUS + inputs.atmos_refract + dip);
     let lat_rad = inputs.latitude.to_radians();
     let (sin_lat, cos_lat) = lat_rad.sin_cos();
     let delta0_rad = delta[JD_ZERO].to_radians();
@@ -651,10 +655,10 @@ pub fn spa_calculate(inputs: &SpaInputs) -> Result<SpaOutputs, SpaError> {
     let delta_rad = geo.delta.to_radians();
     let (sin_delta, cos_delta) = delta_rad.sin_cos();
 
-    let u = (0.9966471893352525 * lat_rad.tan()).atan();
+    let u = (EARTH_B_OVER_A * lat_rad.tan()).atan();
     let (sin_u, cos_u) = u.sin_cos();
-    let y = 0.9966471893352525 * sin_u + inputs.elevation * sin_lat / 6378137.0;
-    let x = cos_u + inputs.elevation * cos_lat / 6378137.0;
+    let y = EARTH_B_OVER_A * sin_u + inputs.elevation * sin_lat / EARTH_RADIUS;
+    let x = cos_u + inputs.elevation * cos_lat / EARTH_RADIUS;
 
     let del_alpha_rad = (-x * sin_xi * sin_h).atan2(cos_delta - x * sin_xi * cos_h);
     let delta_prime = ((sin_delta - y * sin_xi) * del_alpha_rad.cos())
