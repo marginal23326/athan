@@ -10,11 +10,8 @@ pub use prayer::*;
 pub use qiblah::*;
 pub use types::*;
 
-use std::sync::LazyLock;
-
-pub static DATE_FMT: LazyLock<time::format_description::OwnedFormatItem> = LazyLock::new(|| {
-    time::format_description::parse_owned::<1>("[weekday], [month repr:long] [day], [year]").unwrap()
-});
+pub static DATE_FMT: &[time::format_description::FormatItem<'static>] =
+    time::macros::format_description!("[weekday], [month repr:long] [day], [year]");
 
 pub fn format_duration(d: time::Duration) -> String {
     let secs = d.whole_seconds().max(0);

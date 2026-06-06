@@ -128,7 +128,7 @@ pub fn run() -> Result<(), String> {
 
     let (next_prayer, _next_time) = next_prayer(&prayer_times, now_local.time());
 
-    let date_fmt = time::format_description::parse("[weekday], [month repr:long] [day], [year]").unwrap();
+    let date_fmt = time::macros::format_description!("[weekday], [month repr:long] [day], [year]");
     let date_str = now_local.format(&date_fmt).unwrap_or_default();
 
     let mut out = String::new();

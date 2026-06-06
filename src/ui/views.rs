@@ -28,7 +28,7 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
                 .size(13)
                 .color(styles::ACCENT)
             } else {
-                text(now_local.format(&*DATE_FMT).unwrap_or_default())
+                text(now_local.format(DATE_FMT).unwrap_or_default())
                     .size(13)
                     .color(styles::TEXT_MUTED)
             }
@@ -51,7 +51,7 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
         .size(12)
         .color(styles::TEXT_MUTED),
         Space::new().width(Fill),
-        text(now_local.format(&*DATE_FMT).unwrap_or_default())
+        text(now_local.format(DATE_FMT).unwrap_or_default())
             .size(12)
             .color(styles::TEXT_MUTED),
     ]
