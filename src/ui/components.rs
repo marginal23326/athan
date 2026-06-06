@@ -6,17 +6,32 @@ use iced::widget::{Space, column, pick_list, row, text, text_input, toggler};
 use iced::{Alignment, Element, Fill};
 use std::borrow::Borrow;
 
+pub fn can_be_float(s: &str) -> bool {
+    s.is_empty()
+        || s.parse::<f64>().is_ok()
+        || matches!(s, "-" | "+" | "." | "-." | "+.")
+        || s.strip_suffix('.').is_some_and(|p| p.parse::<f64>().is_ok())
+}
+
 pub fn labeled_input<'a>(
     label: &'a str,
     value: &'a str,
+    is_invalid: bool,
     on_change: impl Fn(String) -> Message + 'a,
 ) -> Element<'a, Message> {
+    let label_color = if is_invalid { styles::ERROR } else { styles::TEXT_MUTED };
+    let border_style = if is_invalid {
+        styles::text_input_invalid
+    } else {
+        styles::text_input
+    };
+
     column![
-        text(label).size(11).color(styles::TEXT_MUTED),
+        text(label).size(11).color(label_color),
         text_input(label, value)
             .on_input(on_change)
             .padding(8)
-            .style(styles::text_input)
+            .style(border_style)
     ]
     .spacing(4)
     .width(Fill)
@@ -59,7 +74,9 @@ pub fn toggle_row<'a>(
 }
 
 pub fn adjustment_input<'a>(app: &'a App, prayer: Prayer) -> Element<'a, Message> {
-    labeled_input(prayer.name(), app.adjustment_input(prayer), move |value| {
+    let val = app.adjustment_input(prayer);
+    let is_invalid = val.parse::<i32>().map_or(true, |v| !(-120..=120).contains(&v));
+    labeled_input(prayer.name(), val, is_invalid, move |value| {
         Message::AdjustmentChanged(prayer, value)
     })
 }

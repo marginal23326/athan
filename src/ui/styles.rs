@@ -50,6 +50,12 @@ pub fn text_input(theme: &Theme, status: text_input_widget::Status) -> text_inpu
     style
 }
 
+pub fn text_input_invalid(theme: &Theme, status: text_input_widget::Status) -> text_input_widget::Style {
+    let mut style = text_input(theme, status);
+    style.border.color = ERROR;
+    style
+}
+
 pub fn pick_list(theme: &Theme, status: pick_list_widget::Status) -> pick_list_widget::Style {
     let mut style = pick_list_widget::default(theme, status);
     style.border.radius = 6.0.into();

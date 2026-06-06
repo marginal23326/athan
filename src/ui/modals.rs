@@ -1,10 +1,12 @@
 use crate::app::{App, Message};
-use crate::ui::components::{adjustment_grid, adjustment_summary, labeled_input, labeled_picker, toggle_row};
+use crate::ui::components::{
+    adjustment_grid, adjustment_summary, can_be_float, labeled_input, labeled_picker, toggle_row,
+};
 use crate::ui::styles;
 use athan::core::*;
 
 use iced::widget::text::Wrapping;
-use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
+use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Element, Fill};
 
 fn modal_header<'a>(title: &'a str, on_close: Message) -> Element<'a, Message> {
@@ -23,27 +25,49 @@ fn modal_header<'a>(title: &'a str, on_close: Message) -> Element<'a, Message> {
 pub fn settings_modal(app: &App) -> Element<'_, Message> {
     let header = modal_header("Configuration", Message::ToggleSettings);
 
+    let is_name_invalid = app.inputs.loc_name_input.trim().is_empty();
+    let is_tz_invalid = !can_be_float(&app.inputs.tz_input);
+    let is_lat_invalid = !can_be_float(&app.inputs.lat_input);
+    let is_lon_invalid = !can_be_float(&app.inputs.lon_input);
+    let is_elv_invalid = !can_be_float(&app.inputs.elv_input);
+
     let location_grid = column![
         row![
-            labeled_input("City Name", &app.inputs.loc_name_input, Message::LocationNameChanged),
-            column![
-                text("UTC Offset (Hrs)").size(11).color(styles::TEXT_MUTED),
-                text_input("UTC Offset (Hrs)", &app.inputs.tz_input)
-                    .on_input(Message::TimezoneChanged)
-                    .padding(8)
-                    .style(styles::text_input)
-                    .width(Fill),
-            ]
-            .spacing(4)
-            .width(Fill)
+            labeled_input(
+                "City Name",
+                &app.inputs.loc_name_input,
+                is_name_invalid,
+                Message::LocationNameChanged
+            ),
+            labeled_input(
+                "UTC Offset (Hrs)",
+                &app.inputs.tz_input,
+                is_tz_invalid,
+                Message::TimezoneChanged
+            ),
         ]
         .spacing(12),
         row![
-            labeled_input("Latitude", &app.inputs.lat_input, Message::LatitudeChanged),
-            labeled_input("Longitude", &app.inputs.lon_input, Message::LongitudeChanged),
+            labeled_input(
+                "Latitude",
+                &app.inputs.lat_input,
+                is_lat_invalid,
+                Message::LatitudeChanged
+            ),
+            labeled_input(
+                "Longitude",
+                &app.inputs.lon_input,
+                is_lon_invalid,
+                Message::LongitudeChanged
+            ),
         ]
         .spacing(12),
-        labeled_input("Elevation (m)", &app.inputs.elv_input, Message::ElevationChanged)
+        labeled_input(
+            "Elevation (m)",
+            &app.inputs.elv_input,
+            is_elv_invalid,
+            Message::ElevationChanged
+        )
     ]
     .spacing(12);
 
@@ -97,11 +121,23 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
     let location_section = column![
         text("Location Data").size(13).color(styles::TEXT_PRIMARY),
         location_grid,
-        button(text("Auto Detect Location").size(12))
-            .on_press(Message::DetectLocation)
+        {
+            let mut btn = button(
+                text(if app.is_detecting {
+                    "Detecting…"
+                } else {
+                    "Auto Detect Location"
+                })
+                .size(12),
+            )
             .style(styles::button)
             .padding([6, 14])
-            .width(Fill),
+            .width(Fill);
+            if !app.is_detecting {
+                btn = btn.on_press(Message::DetectLocation);
+            }
+            btn
+        },
     ]
     .spacing(12);
 

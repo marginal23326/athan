@@ -27,7 +27,7 @@ fn daily_prayer_data_uses_location_date_ahead_of_utc() {
     );
 
     assert_eq!(data.date, expected_date);
-    assert_eq!(data.hijri_date, HijriDate::from_gregorian(expected_date).unwrap());
+    assert_eq!(data.hijri_date, Some(HijriDate::from_gregorian(expected_date).unwrap()));
     assert_eq!(
         data.prayer_times,
         calculate_prayer_times(
@@ -62,7 +62,7 @@ fn daily_prayer_data_uses_location_date_behind_utc() {
     );
 
     assert_eq!(data.date, expected_date);
-    assert_eq!(data.hijri_date, HijriDate::from_gregorian(expected_date).unwrap());
+    assert_eq!(data.hijri_date, Some(HijriDate::from_gregorian(expected_date).unwrap()));
     assert_eq!(
         data.prayer_times,
         calculate_prayer_times(

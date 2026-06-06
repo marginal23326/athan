@@ -1,28 +1,22 @@
 pub mod detect;
+pub mod format;
 pub mod hijri;
 pub mod prayer;
 pub mod qiblah;
 pub mod types;
 
 pub use detect::*;
+pub use format::*;
 pub use hijri::*;
 pub use prayer::*;
 pub use qiblah::*;
 pub use types::*;
 
-pub static DATE_FMT: &[time::format_description::FormatItem<'static>] =
-    time::macros::format_description!("[weekday], [month repr:long] [day], [year]");
-
-pub fn format_duration(d: time::Duration) -> String {
-    let secs = d.whole_seconds().max(0);
-    format!("{:02}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60)
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct DailyPrayerData {
     pub date: time::Date,
     pub prayer_times: Option<PrayerTimes>,
-    pub hijri_date: HijriDate,
+    pub hijri_date: Option<HijriDate>,
     pub qiblah: f64,
 }
 
@@ -46,11 +40,7 @@ pub fn calculate_daily_prayer_data(
             asr_method,
             adjustments,
         ),
-        hijri_date: HijriDate::from_gregorian(date).unwrap_or(HijriDate {
-            year: 0,
-            month: 1,
-            day: 1,
-        }),
+        hijri_date: HijriDate::from_gregorian(date),
         qiblah: qiblah_direction(location.coordinates),
     }
 }

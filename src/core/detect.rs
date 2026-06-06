@@ -1,4 +1,17 @@
 use crate::core::types::{Coordinates, Location};
+use thiserror::Error;
+
+#[derive(Error, Debug, Clone)]
+pub enum DetectError {
+    #[error("HTTP request failed: {0}")]
+    Network(String),
+    #[error("Failed to parse response: {0}")]
+    Parse(String),
+    #[error("API error: {0}")]
+    Api(String),
+    #[error("{0}")]
+    Internal(String),
+}
 
 #[derive(Debug, Clone)]
 pub struct LocationData {
@@ -9,13 +22,13 @@ pub struct LocationData {
     pub elevation: f64,
 }
 
-impl LocationData {
-    pub fn into_location(self) -> Location {
+impl From<LocationData> for Location {
+    fn from(data: LocationData) -> Self {
         Location {
-            name: self.name,
-            coordinates: Coordinates::new(self.lat, self.lon),
-            timezone_offset: self.offset,
-            elevation: self.elevation,
+            name: data.name,
+            coordinates: Coordinates::new(data.lat, data.lon),
+            timezone_offset: data.offset,
+            elevation: data.elevation,
         }
     }
 }
@@ -36,15 +49,15 @@ struct ElevationResponse {
     elevation: Vec<f64>,
 }
 
-pub fn detect_location() -> Result<LocationData, String> {
+pub fn detect_location() -> Result<LocationData, DetectError> {
     let response = minreq::get("https://ipwhois.app/json/")
         .send()
-        .map_err(|e| format!("HTTP request failed: {e}"))?;
+        .map_err(|e| DetectError::Network(e.to_string()))?;
 
-    let api: IpWhoisResponse = response.json().map_err(|e| format!("Failed to parse response: {e}"))?;
+    let api: IpWhoisResponse = response.json().map_err(|e| DetectError::Parse(e.to_string()))?;
 
     if !api.success {
-        return Err(api.message.unwrap_or_else(|| "Unknown error".into()));
+        return Err(DetectError::Api(api.message.unwrap_or_else(|| "Unknown error".into())));
     }
 
     let lat = api.latitude.unwrap_or(0.0);
@@ -66,17 +79,4 @@ pub fn detect_location() -> Result<LocationData, String> {
         offset: api.timezone_gmt_offset.unwrap_or(0) as f64 / 3600.0,
         elevation,
     })
-}
-
-pub fn format_time(t: time::Time) -> String {
-    let (h, m, _) = t.as_hms();
-    let ampm = if h < 12 { "AM" } else { "PM" };
-    let h12 = if h == 0 {
-        12
-    } else if h > 12 {
-        h - 12
-    } else {
-        h
-    };
-    format!("{}:{:02} {}", h12, m, ampm)
 }

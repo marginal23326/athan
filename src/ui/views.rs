@@ -20,10 +20,15 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
         column![
             text(&app.location.name).size(18).color(styles::TEXT_PRIMARY),
             if app.show_hijri {
-                text(if app.show_arabic {
-                    app.hijri_date.arabic_display()
-                } else {
-                    app.hijri_date.display()
+                text(match &app.hijri_date {
+                    Some(h) => {
+                        if app.show_arabic {
+                            h.arabic_display()
+                        } else {
+                            h.display()
+                        }
+                    }
+                    None => "Hijri date unavailable".into(),
                 })
                 .size(13)
                 .color(styles::ACCENT)

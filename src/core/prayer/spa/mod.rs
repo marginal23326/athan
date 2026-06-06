@@ -213,6 +213,7 @@ pub fn third_order_polynomial(a: f64, b: f64, c: f64, d: f64, x: f64) -> f64 {
 }
 
 // Calculations
+#[allow(clippy::too_many_arguments)]
 fn julian_day(year: i32, month: i32, day: i32, hour: i32, minute: i32, second: f64, dut1: f64, tz: f64) -> f64 {
     let day_decimal = day as f64 + (hour as f64 - tz + (minute as f64 + (second + dut1) / 60.0) / 60.0) / 24.0;
 
@@ -376,7 +377,7 @@ fn calculate_sun_rise_transit_set(inputs: &SpaInputs) -> Option<SunEventsOutputs
     let (sin_delta0, cos_delta0) = delta0_rad.sin_cos();
     let argument = (h0_prime.to_radians().sin() - sin_lat * sin_delta0) / (cos_lat * cos_delta0);
 
-    if !(argument.abs() <= 1.0) {
+    if argument.abs() > 1.0 {
         return None; // Sun never rises or never sets
     }
 

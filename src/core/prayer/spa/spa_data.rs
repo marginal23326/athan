@@ -1,3 +1,4 @@
+#![allow(clippy::approx_constant)]
 //  Earth Periodic Terms
 pub(super) const L_TERMS_0: [[f64; 3]; 64] = [
     [175347046.0, 0.0, 0.0], [3341656.0, 4.6692568, 6283.07585], [34894.0, 4.6261, 12566.1517],

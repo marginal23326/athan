@@ -106,6 +106,7 @@ impl PrayerTimes {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(usize)]
 pub enum Prayer {
     Fajr,
     Sunrise,
@@ -128,14 +129,7 @@ impl Prayer {
     pub const COUNT: usize = Self::ALL.len();
 
     pub fn index(self) -> usize {
-        match self {
-            Self::Fajr => 0,
-            Self::Sunrise => 1,
-            Self::Dhuhr => 2,
-            Self::Asr => 3,
-            Self::Maghrib => 4,
-            Self::Isha => 5,
-        }
+        self as usize
     }
 
     pub fn name(&self) -> &'static str {

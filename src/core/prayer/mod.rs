@@ -78,35 +78,28 @@ fn calculate_solar_position(
     let mut lat = original_lat;
 
     for i in 0..2 {
-        let inputs = SpaInputs::new(
-            date.year(),
-            date.month() as u8 as i32,
-            date.day() as u8 as i32,
-            lat,
-            lon,
-        )
-        .timezone(timezone_hours)
-        .elevation(elevation)
-        .function(SpaFunction::ZaRts);
+        let inputs = SpaInputs::new(date.year(), date.month() as u8 as i32, date.day() as i32, lat, lon)
+            .timezone(timezone_hours)
+            .elevation(elevation)
+            .function(SpaFunction::ZaRts);
 
-        if let Ok(outputs) = spa_calculate(&inputs) {
-            if let (Some(transit), Some(sunrise), Some(sunset)) = (outputs.suntransit, outputs.sunrise, outputs.sunset)
-            {
-                let ha_ss = if sunset >= transit {
-                    sunset - transit
-                } else {
-                    (sunset + 24.0) - transit
+        if let Ok(outputs) = spa_calculate(&inputs)
+            && let (Some(transit), Some(sunrise), Some(sunset)) = (outputs.suntransit, outputs.sunrise, outputs.sunset)
+        {
+            let ha_ss = if sunset >= transit {
+                sunset - transit
+            } else {
+                (sunset + 24.0) - transit
+            };
+
+            if i == 1 || (ha_ss > 0.5 && ha_ss < 11.5) {
+                return SolarPosition {
+                    lat,
+                    topo_decl: outputs.delta_prime,
+                    transit,
+                    sunrise,
+                    sunset,
                 };
-
-                if i == 1 || (ha_ss > 0.5 && ha_ss < 11.5) {
-                    return SolarPosition {
-                        lat,
-                        topo_decl: outputs.delta_prime,
-                        transit,
-                        sunrise,
-                        sunset,
-                    };
-                }
             }
         }
         lat = 45.0_f64.copysign(lat);

@@ -20,7 +20,7 @@ pub enum Message {
     FocusPrevious,
     EscapePressed,
     DetectLocation,
-    LocationDetected(Result<LocationData, String>),
+    LocationDetected(Result<LocationData, DetectError>),
 }
 
 pub struct SettingsState {
@@ -38,13 +38,14 @@ pub struct App {
     pub asr_method: AsrMethod,
     pub prayer_adjustments: PrayerAdjustments,
     pub prayer_times: Option<PrayerTimes>,
-    pub hijri_date: HijriDate,
+    pub hijri_date: Option<HijriDate>,
     pub qiblah: f64,
     pub now: time::OffsetDateTime,
     pub settings_open: bool,
     pub adjustments_open: bool,
     pub show_arabic: bool,
     pub show_hijri: bool,
+    pub is_detecting: bool,
     pub inputs: SettingsState,
     pub error: Option<String>,
 }
@@ -72,6 +73,7 @@ impl Default for App {
             adjustments_open: false,
             show_arabic: false,
             show_hijri: false,
+            is_detecting: false,
             inputs: SettingsState {
                 lat_input: loc.coordinates.latitude.to_string(),
                 lon_input: loc.coordinates.longitude.to_string(),
@@ -112,6 +114,15 @@ impl App {
 
     pub fn set_adjustment_input(&mut self, prayer: Prayer, value: String) {
         self.inputs.adjustment_inputs[prayer.index()] = value;
+    }
+
+    fn reset_inputs(&mut self) {
+        self.inputs.lat_input = self.location.coordinates.latitude.to_string();
+        self.inputs.lon_input = self.location.coordinates.longitude.to_string();
+        self.inputs.tz_input = self.location.timezone_offset.to_string();
+        self.inputs.elv_input = self.location.elevation.to_string();
+        self.inputs.loc_name_input = self.location.name.clone();
+        self.inputs.adjustment_inputs = Prayer::ALL.map(|prayer| self.prayer_adjustments.get(prayer).to_string());
     }
 }
 
@@ -178,15 +189,27 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::DetectLocation => {
-            let future = async {
-                tokio::task::spawn_blocking(detect_location)
-                    .await
-                    .map_err(|e| format!("Internal error: {e}"))?
+            app.is_detecting = true;
+
+            let (tx, rx) = iced::futures::channel::oneshot::channel();
+
+            std::thread::spawn(move || {
+                let _ = tx.send(detect_location());
+            });
+
+            let future = async move {
+                match rx.await {
+                    Ok(result) => Message::LocationDetected(result),
+                    Err(_) => Message::LocationDetected(Err(DetectError::Internal(
+                        "Background thread panicked or was dropped".into(),
+                    ))),
+                }
             };
 
-            return Task::perform(future, Message::LocationDetected);
+            return Task::perform(future, |msg| msg);
         }
         Message::LocationDetected(Ok(data)) => {
+            app.is_detecting = false;
             app.inputs.loc_name_input = data.name.clone();
             app.inputs.lat_input = data.lat.to_string();
             app.inputs.lon_input = data.lon.to_string();
@@ -200,11 +223,14 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.recalculate();
         }
         Message::LocationDetected(Err(e)) => {
-            app.error = Some(e);
+            app.is_detecting = false;
+            app.error = Some(e.to_string());
         }
         Message::ToggleSettings => {
             app.settings_open = !app.settings_open;
-            if !app.settings_open {
+            if app.settings_open {
+                app.reset_inputs();
+            } else {
                 app.adjustments_open = false;
             }
         }
@@ -218,6 +244,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 app.adjustments_open = false;
             } else if app.settings_open {
                 app.settings_open = false;
+                app.reset_inputs();
             }
         }
     }

@@ -145,8 +145,8 @@ dependencies = [
  "icu_calendar",
  "minreq",
  "serde",
+ "thiserror 2.0.18",
  "time",
- "tokio",
 ]
 
 [[package]]

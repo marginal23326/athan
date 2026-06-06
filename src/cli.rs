@@ -1,7 +1,16 @@
 use clap::{Parser, ValueEnum};
 use std::fmt::Write;
+use thiserror::Error;
 
 use crate::core::*;
+
+#[derive(Error, Debug)]
+pub enum CliError {
+    #[error("{0}")]
+    Usage(&'static str),
+    #[error("Cannot compute prayer times for this location/date.")]
+    NoPrayerTimes,
+}
 
 #[derive(Parser)]
 #[command(name = "athan", version, about = "Islamic prayer times calculator")]
@@ -79,26 +88,26 @@ impl From<AsrArg> for AsrMethod {
     }
 }
 
-fn format_duration(d: time::Duration) -> String {
-    let secs = d.whole_seconds().max(0);
-    format!("{:02}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60)
-}
-
-pub fn run() -> Result<(), String> {
+pub fn run() -> Result<(), CliError> {
     let cli = Cli::parse();
 
     let location = if cli.detect {
-        let detected = detect_location()?;
-        Location {
-            name: detected.name,
-            coordinates: Coordinates::new(cli.lat.unwrap_or(detected.lat), cli.lon.unwrap_or(detected.lon)),
-            timezone_offset: cli.tz.unwrap_or(detected.offset),
-            elevation: cli.elevation.unwrap_or(detected.elevation),
+        match detect_location() {
+            Ok(detected) => Location {
+                name: detected.name,
+                coordinates: Coordinates::new(cli.lat.unwrap_or(detected.lat), cli.lon.unwrap_or(detected.lon)),
+                timezone_offset: cli.tz.unwrap_or(detected.offset),
+                elevation: cli.elevation.unwrap_or(detected.elevation),
+            },
+            Err(e) => {
+                eprintln!("Warning: could not detect location from IP ({e}). Falling back to Makkah.");
+                Location::default()
+            }
         }
     } else {
         let (lat, lon, tz) = match (cli.lat, cli.lon, cli.tz) {
             (Some(lat), Some(lon), Some(tz)) => (lat, lon, tz),
-            _ => return Err("--lat, --lon, and --tz are required (or use --detect)".into()),
+            _ => return Err(CliError::Usage("--lat, --lon, and --tz are required (or use --detect)")),
         };
         Location {
             name: cli.location,
@@ -115,9 +124,7 @@ pub fn run() -> Result<(), String> {
 
     let data = calculate_daily_prayer_data(now, &location, method, asr, adjustments);
 
-    let prayer_times = data
-        .prayer_times
-        .ok_or("Cannot compute prayer times for this location/date.")?;
+    let prayer_times = data.prayer_times.ok_or(CliError::NoPrayerTimes)?;
 
     let offset =
         time::UtcOffset::from_whole_seconds((location.timezone_offset * 3600.0) as i32).unwrap_or(time::UtcOffset::UTC);
@@ -125,14 +132,16 @@ pub fn run() -> Result<(), String> {
 
     let (next_prayer, _next_time) = next_prayer(&prayer_times, now_local.time());
 
-    let date_fmt = time::macros::format_description!("[weekday], [month repr:long] [day], [year]");
-    let date_str = now_local.format(&date_fmt).unwrap_or_default();
+    let date_str = now_local.format(DATE_FMT).unwrap_or_default();
 
     let mut out = String::new();
 
     writeln!(out, "  {}", &location.name).unwrap();
     if cli.hijri {
-        writeln!(out, "  {}", data.hijri_date.display()).unwrap();
+        match &data.hijri_date {
+            Some(h) => writeln!(out, "  {}", h.display()).unwrap(),
+            None => writeln!(out, "  (Hijri date unavailable)").unwrap(),
+        }
     } else {
         writeln!(out, "  {date_str}").unwrap();
     }
@@ -142,16 +151,11 @@ pub fn run() -> Result<(), String> {
     let name_width = 10;
     let time_width = 10;
 
+    writeln!(out, "  {:<name_width$} {:>time_width$}   STATUS", "PRAYER", "TIME").unwrap();
     writeln!(
         out,
-        "  {:<name_width$} {:>time_width$}   {}",
-        "PRAYER", "TIME", "STATUS"
-    )
-    .unwrap();
-    writeln!(
-        out,
-        "  {: <name_width$} {: >time_width$}   {}",
-        "----------", "----------", "------"
+        "  {: <name_width$} {: >time_width$}   ------",
+        "----------", "----------"
     )
     .unwrap();
 
