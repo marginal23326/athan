@@ -12,13 +12,9 @@ const JD_MINUS: usize = 0;
 const JD_ZERO: usize = 1;
 const JD_PLUS: usize = 2;
 
-type SunEvents = [f64; 3];
-type JulianDayWindow = [f64; 3];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SpaFunction {
-    Za,
-    ZaInc,
     ZaRts,
     #[default]
     All,
@@ -39,8 +35,6 @@ pub enum SpaError {
     InvalidElevation,
     InvalidPressure,
     InvalidTemperature,
-    InvalidSlope,
-    InvalidAzmRotation,
     InvalidAtmosRefract,
     InvalidDeltaUt1,
 }
@@ -61,8 +55,6 @@ impl fmt::Display for SpaError {
             Self::InvalidElevation => "Elevation out of range (>= -6500000)",
             Self::InvalidPressure => "Pressure out of range (0 to 5000)",
             Self::InvalidTemperature => "Temperature out of range (> -273 and <= 6000)",
-            Self::InvalidSlope => "Slope out of range (|slope| <= 360)",
-            Self::InvalidAzmRotation => "Azm rotation out of range (|azm_rotation| <= 360)",
             Self::InvalidAtmosRefract => "Atmospheric refraction out of range (|atmos_refract| <= 5)",
             Self::InvalidDeltaUt1 => "Delta UT1 out of range (-1 to 1)",
         };
@@ -88,8 +80,6 @@ pub struct SpaInputs {
     pub elevation: f64,
     pub pressure: f64,
     pub temperature: f64,
-    pub slope: f64,
-    pub azm_rotation: f64,
     pub atmos_refract: f64,
     pub function: SpaFunction,
 }
@@ -111,18 +101,9 @@ impl SpaInputs {
             elevation: 0.0,
             pressure: 1013.25,
             temperature: 15.0,
-            slope: 0.0,
-            azm_rotation: 0.0,
             atmos_refract: 0.5667,
             function: SpaFunction::All,
         }
-    }
-
-    pub fn time(mut self, hour: i32, minute: i32, second: f64) -> Self {
-        self.hour = hour;
-        self.minute = minute;
-        self.second = second;
-        self
     }
 
     pub fn timezone(mut self, tz: f64) -> Self {
@@ -132,12 +113,6 @@ impl SpaInputs {
 
     pub fn elevation(mut self, elevation: f64) -> Self {
         self.elevation = elevation;
-        self
-    }
-
-    pub fn environment(mut self, pressure: f64, temperature: f64) -> Self {
-        self.pressure = pressure;
-        self.temperature = temperature;
         self
     }
 
@@ -203,27 +178,13 @@ impl SpaInputs {
             return Err(SpaError::InvalidElevation);
         }
 
-        if matches!(self.function, SpaFunction::ZaInc | SpaFunction::All) {
-            if self.slope.abs() > 360.0 {
-                return Err(SpaError::InvalidSlope);
-            }
-            if self.azm_rotation.abs() > 360.0 {
-                return Err(SpaError::InvalidAzmRotation);
-            }
-        }
-
         Ok(())
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct SpaOutputs {
-    pub zenith: f64,
-    pub azimuth_astro: f64,
-    pub azimuth: f64,
-    pub eot: f64,
     pub delta_prime: f64,
-    pub incidence: Option<f64>,
     pub suntransit: Option<f64>,
     pub sunrise: Option<f64>,
     pub sunset: Option<f64>,
@@ -380,16 +341,6 @@ pub fn third_order_polynomial(a: f64, b: f64, c: f64, d: f64, x: f64) -> f64 {
     a.mul_add(x, b).mul_add(x, c).mul_add(x, d)
 }
 
-pub fn sun_mean_longitude(jme: f64) -> f64 {
-    limit_degrees(280.4664567 + jme * (360007.6982779 + jme * (0.03032028 + jme * (1.0 / 49931.0 + jme * (-1.0 / 15300.0 + jme * (-1.0 / 2_000_000.0))))))
-}
-
-pub fn equation_of_time(m: f64, alpha: f64, del_psi: f64, epsilon: f64) -> f64 {
-    let mut e = 4.0 * (m - 0.0057183 - alpha + del_psi * epsilon.to_radians().cos());
-    if e < -20.0 { e += 1440.0; } else if e > 20.0 { e -= 1440.0; }
-    e
-}
-
 // Calculations
 fn julian_day(year: i32, month: i32, day: i32, hour: i32, minute: i32, second: f64, dut1: f64, tz: f64) -> f64 {
     let day_decimal = day as f64 + (hour as f64 - tz + (minute as f64 + (second + dut1) / 60.0) / 60.0) / 24.0;
@@ -465,9 +416,6 @@ struct GeocentricCoords {
     alpha: f64,
     delta: f64,
     nu: f64,
-    jme: f64,
-    del_psi: f64,
-    epsilon: f64,
     r: f64,
 }
 
@@ -535,9 +483,6 @@ fn calculate_geocentric_sun_coords(jd: f64, delta_t: f64) -> GeocentricCoords {
         alpha,
         delta,
         nu,
-        jme,
-        del_psi,
-        epsilon,
         r,
     }
 }
@@ -640,9 +585,6 @@ pub fn spa_calculate(inputs: &SpaInputs) -> Result<SpaOutputs, SpaError> {
     );
     let geo = calculate_geocentric_sun_coords(jd, inputs.delta_t);
 
-    let m = sun_mean_longitude(geo.jme);
-    let eot = equation_of_time(m, geo.alpha, geo.del_psi, geo.epsilon);
-
     let h = limit_degrees(geo.nu + inputs.longitude - geo.alpha);
     let xi = 8.794 / (3600.0 * geo.r);
 
@@ -665,51 +607,12 @@ pub fn spa_calculate(inputs: &SpaInputs) -> Result<SpaOutputs, SpaError> {
         .atan2(cos_delta - x * sin_xi * cos_h)
         .to_degrees();
 
-    let h_prime = h - del_alpha_rad.to_degrees();
-    let dp_rad = delta_prime.to_radians();
-    let (sin_dp, cos_dp) = dp_rad.sin_cos();
-    let hp_rad = h_prime.to_radians();
-    let (sin_hp, cos_hp) = hp_rad.sin_cos();
-    let e0 = (sin_lat * sin_dp + cos_lat * cos_dp * cos_hp)
-        .clamp(-1.0, 1.0)
-        .asin()
-        .to_degrees();
-
-    let del_e = if e0 >= -(SUN_RADIUS + inputs.atmos_refract) {
-        (inputs.pressure / 1010.0) * (283.0 / (273.0 + inputs.temperature)) * 1.02
-            / (60.0 * (e0 + 10.3 / (e0 + 5.11)).to_radians().tan())
-    } else {
-        0.0
-    };
-
-    let e = e0 + del_e;
-    let zenith = 90.0 - e;
-    let azimuth_astro = limit_degrees(
-        sin_hp.atan2(cos_hp * sin_lat - dp_rad.tan() * cos_lat).to_degrees(),
-    );
-
-    let incidence = matches!(inputs.function, SpaFunction::ZaInc | SpaFunction::All).then(|| {
-        let (sin_zenith, cos_zenith) = zenith.to_radians().sin_cos();
-        let (sin_slope, cos_slope) = inputs.slope.to_radians().sin_cos();
-        let cos_azm_diff = (azimuth_astro - inputs.azm_rotation).to_radians().cos();
-
-        (cos_zenith * cos_slope + sin_slope * sin_zenith * cos_azm_diff)
-            .clamp(-1.0, 1.0)
-            .acos()
-            .to_degrees()
-    });
-
     let rts = if matches!(inputs.function, SpaFunction::ZaRts | SpaFunction::All) {
         calculate_sun_rise_transit_set(inputs)
     } else { None };
 
     Ok(SpaOutputs {
-        zenith,
-        azimuth_astro,
-        azimuth: limit_degrees(azimuth_astro + 180.0),
-        eot,
         delta_prime,
-        incidence,
         suntransit: rts.as_ref().map(|r| r.transit),
         sunrise: rts.as_ref().map(|r| r.rise),
         sunset: rts.as_ref().map(|r| r.set),
