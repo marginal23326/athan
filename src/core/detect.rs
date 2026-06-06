@@ -21,13 +21,14 @@ impl LocationData {
 }
 
 #[derive(serde::Deserialize)]
-struct IpApiResponse {
-    status: String,
+struct IpWhoisResponse {
+    success: bool,
     message: Option<String>,
     city: Option<String>,
-    lat: Option<f64>,
-    lon: Option<f64>,
-    offset: Option<i32>,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
+    #[serde(rename = "timezone_gmtOffset")]
+    timezone_gmt_offset: Option<i32>,
 }
 
 #[derive(serde::Deserialize)]
@@ -36,18 +37,18 @@ struct ElevationResponse {
 }
 
 pub fn detect_location() -> Result<LocationData, String> {
-    let response = minreq::get("http://ip-api.com/json/?fields=status,message,city,lat,lon,timezone,offset")
+    let response = minreq::get("https://ipwhois.app/json/")
         .send()
         .map_err(|e| format!("HTTP request failed: {e}"))?;
 
-    let api: IpApiResponse = response.json().map_err(|e| format!("Failed to parse response: {e}"))?;
+    let api: IpWhoisResponse = response.json().map_err(|e| format!("Failed to parse response: {e}"))?;
 
-    if api.status != "success" {
+    if !api.success {
         return Err(api.message.unwrap_or_else(|| "Unknown error".into()));
     }
 
-    let lat = api.lat.unwrap_or(0.0);
-    let lon = api.lon.unwrap_or(0.0);
+    let lat = api.latitude.unwrap_or(0.0);
+    let lon = api.longitude.unwrap_or(0.0);
 
     let elevation = minreq::get(format!(
         "https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lon}"
@@ -62,7 +63,7 @@ pub fn detect_location() -> Result<LocationData, String> {
         name: api.city.unwrap_or_else(|| "Unknown".into()),
         lat,
         lon,
-        offset: api.offset.unwrap_or(0) as f64 / 3600.0,
+        offset: api.timezone_gmt_offset.unwrap_or(0) as f64 / 3600.0,
         elevation,
     })
 }

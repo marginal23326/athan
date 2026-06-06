@@ -17,7 +17,7 @@ strip = true
 [dependencies]
 time = { version = "0.3", features = ["formatting"] }
 icu_calendar = { version = "2.2", default-features = false, features = ["compiled_data"] }
-minreq = { version = "2.14", features = ["json-using-serde"] }
+minreq = { version = "2.14", features = ["json-using-serde", "https"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["rt"] }
 clap = { version = "4", features = ["derive"] }
