@@ -44,12 +44,6 @@ impl CalculationMethod {
     }
 }
 
-impl fmt::Display for CalculationMethod {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.description())
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AsrMethod {
     Shafi,
@@ -73,6 +67,12 @@ impl AsrMethod {
 
     pub fn variants() -> &'static [AsrMethod] {
         &[Self::Shafi, Self::Hanafi]
+    }
+}
+
+impl fmt::Display for CalculationMethod {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.description())
     }
 }
 

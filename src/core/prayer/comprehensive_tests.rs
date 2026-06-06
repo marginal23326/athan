@@ -37,7 +37,7 @@ fn calc_times(date: time::Date, coords: Coordinates, tz: f64, method: Calculatio
     calculate_prayer_times(
         date, coords, tz, 0.0, method, AsrMethod::Shafi, PrayerAdjustments::zero(),
     )
-    .unwrap_or_else(|| panic!("{method}: calculation returned None"))
+    .unwrap_or_else(|| panic!("{method:?}: calculation returned None"))
 }
 
 // API Cross-Verification Tests

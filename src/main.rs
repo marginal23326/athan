@@ -357,7 +357,6 @@ fn view(app: &App) -> Element<'_, Message> {
 }
 
 fn main_view(app: &App) -> Element<'_, Message> {
-    let date_fmt = time::format_description::parse("[weekday], [month repr:long] [day], [year]").unwrap();
     let offset = time::UtcOffset::from_whole_seconds((app.location.timezone_offset * 3600.0) as i32)
         .unwrap_or(time::UtcOffset::UTC);
     let now_local = app.now.to_offset(offset);
@@ -379,7 +378,7 @@ fn main_view(app: &App) -> Element<'_, Message> {
                 .size(13)
                 .color(ui::styles::ACCENT)
             } else {
-                text(now_local.format(&date_fmt).unwrap_or_default())
+                text(now_local.format(&*DATE_FMT).unwrap_or_default())
                     .size(13)
                     .color(ui::styles::TEXT_MUTED)
             }
@@ -402,7 +401,7 @@ fn main_view(app: &App) -> Element<'_, Message> {
         .size(12)
         .color(ui::styles::TEXT_MUTED),
         Space::new().width(Fill),
-        text(now_local.format(&date_fmt).unwrap_or_default())
+        text(now_local.format(&*DATE_FMT).unwrap_or_default())
             .size(12)
             .color(ui::styles::TEXT_MUTED),
     ]

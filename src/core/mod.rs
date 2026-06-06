@@ -10,6 +10,22 @@ pub use prayer::*;
 pub use qiblah::*;
 pub use types::*;
 
+use std::sync::LazyLock;
+
+pub static DATE_FMT: LazyLock<time::format_description::OwnedFormatItem> = LazyLock::new(|| {
+    time::format_description::parse_owned::<1>("[weekday], [month repr:long] [day], [year]").unwrap()
+});
+
+pub fn format_duration(d: time::Duration) -> String {
+    let secs = d.whole_seconds().max(0);
+    format!(
+        "{:02}:{:02}:{:02}",
+        secs / 3600,
+        (secs % 3600) / 60,
+        secs % 60
+    )
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct DailyPrayerData {
     pub date: time::Date,
