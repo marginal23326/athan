@@ -40,15 +40,6 @@ struct SettingsState {
     pub adjustment_inputs: [String; Prayer::COUNT],
 }
 
-#[derive(Debug, Clone)]
-struct LocationData {
-    name: String,
-    lat: f64,
-    lon: f64,
-    offset: f64,
-    elevation: f64,
-}
-
 struct App {
     location: Location,
     calculation_method: CalculationMethod,
@@ -121,19 +112,6 @@ impl App {
         prayer_times
             .is_none()
             .then(|| "Cannot compute times for this date/location.".into())
-    }
-
-    fn fmt_time(t: &time::Time) -> String {
-        let (h, m, _) = t.as_hms();
-        let ampm = if h < 12 { "AM" } else { "PM" };
-        let h12 = if h == 0 {
-            12
-        } else if h > 12 {
-            h - 12
-        } else {
-            h
-        };
-        format!("{}:{:02} {}", h12, m, ampm)
     }
 
     fn adjustment_input(&self, prayer: Prayer) -> &str {
@@ -209,58 +187,9 @@ fn update(app: &mut App, msg: Message) -> Task<Message> {
         }
         Message::DetectLocation => {
             let future = async {
-                let response = tokio::task::spawn_blocking(|| {
-                    minreq::get("http://ip-api.com/json/?fields=status,message,city,lat,lon,timezone,offset").send()
-                })
-                .await
-                .map_err(|e| format!("Internal error: {e}"))?
-                .map_err(|e| format!("HTTP request failed: {e}"))?;
-
-                #[derive(serde::Deserialize)]
-                struct IpApiResponse {
-                    status: String,
-                    message: Option<String>,
-                    city: Option<String>,
-                    lat: Option<f64>,
-                    lon: Option<f64>,
-                    offset: Option<i32>,
-                }
-
-                let api: IpApiResponse = response.json().map_err(|e| format!("Failed to parse response: {e}"))?;
-
-                if api.status != "success" {
-                    return Err(api.message.unwrap_or_else(|| "Unknown error".into()));
-                }
-
-                let lat = api.lat.unwrap_or(0.0);
-                let lon = api.lon.unwrap_or(0.0);
-
-                let elevation = tokio::task::spawn_blocking(move || {
-                    minreq::get(format!(
-                        "https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lon}"
-                    ))
-                    .send()
-                })
-                .await
-                .ok()
-                .and_then(|r| r.ok())
-                .and_then(|r| {
-                    #[derive(serde::Deserialize)]
-                    struct ElevationResponse {
-                        elevation: Vec<f64>,
-                    }
-                    r.json::<ElevationResponse>().ok()
-                })
-                .and_then(|e| e.elevation.into_iter().next())
-                .unwrap_or(0.0);
-
-                Ok(LocationData {
-                    name: api.city.unwrap_or_else(|| "Unknown".into()),
-                    lat,
-                    lon,
-                    offset: api.offset.unwrap_or(0) as f64 / 3600.0,
-                    elevation,
-                })
+                tokio::task::spawn_blocking(detect_location)
+                    .await
+                    .map_err(|e| format!("Internal error: {e}"))?
             };
 
             return Task::perform(future, Message::LocationDetected);
@@ -512,7 +441,7 @@ fn hero_section(
                     text(prayer.name().to_uppercase())
                         .size(30)
                         .color(ui::styles::TEXT_PRIMARY),
-                    text(App::fmt_time(&ptime)).size(15).color(ui::styles::TEXT_MUTED),
+                    text(format_time(ptime)).size(15).color(ui::styles::TEXT_MUTED),
                 ]
                 .spacing(2),
                 Space::new().width(Fill),
@@ -568,7 +497,7 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>) -> Element<'_, M
                             Element::from(space())
                         },
                         Space::new().width(12),
-                        text(App::fmt_time(&time))
+                        text(format_time(time))
                             .size(15)
                             .color(text_col)
                             .font(Font::MONOSPACE),
@@ -789,7 +718,18 @@ fn theme(_app: &App) -> iced::Theme {
     )
 }
 
-fn main() -> iced::Result {
+fn main() {
+    if std::env::args().len() > 1 {
+        if let Err(e) = athan::cli::run() {
+            eprintln!("Error: {e}");
+            std::process::exit(1);
+        }
+    } else {
+        launch_gui().expect("GUI error");
+    }
+}
+
+fn launch_gui() -> iced::Result {
     iced::application(new, update, view)
         .subscription(subscription)
         .theme(theme)

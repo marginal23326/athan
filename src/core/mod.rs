@@ -1,8 +1,10 @@
+pub mod detect;
 pub mod hijri;
 pub mod prayer;
 pub mod qiblah;
 pub mod types;
 
+pub use detect::*;
 pub use hijri::*;
 pub use prayer::*;
 pub use qiblah::*;
