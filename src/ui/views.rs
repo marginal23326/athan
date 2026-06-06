@@ -3,7 +3,7 @@ use crate::ui::styles;
 use athan::core::*;
 
 use iced::widget::text::Wrapping;
-use iced::widget::{button, column, container, row, rule, scrollable, space, text, Space};
+use iced::widget::{Space, button, column, container, row, rule, scrollable, space, text};
 use iced::{Alignment, Element, Fill, Font};
 
 pub fn main_view(app: &App) -> Element<'_, Message> {
@@ -87,9 +87,7 @@ fn hero_section(
             row![
                 column![
                     text("NEXT PRAYER").size(11).color(styles::TEXT_MUTED),
-                    text(prayer.name().to_uppercase())
-                        .size(30)
-                        .color(styles::TEXT_PRIMARY),
+                    text(prayer.name().to_uppercase()).size(30).color(styles::TEXT_PRIMARY),
                     text(format_time(ptime)).size(15).color(styles::TEXT_MUTED),
                 ]
                 .spacing(2),
@@ -126,11 +124,7 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>) -> Element<'_, M
             .enumerate()
             .map(|(i, &(prayer, time))| {
                 let is_next = next_prayer_enum == Some(prayer);
-                let text_col = if is_next {
-                    styles::ACCENT
-                } else {
-                    styles::TEXT_PRIMARY
-                };
+                let text_col = if is_next { styles::ACCENT } else { styles::TEXT_PRIMARY };
 
                 let row_content = container(
                     row![
@@ -146,10 +140,7 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>) -> Element<'_, M
                             Element::from(space())
                         },
                         Space::new().width(12),
-                        text(format_time(time))
-                            .size(15)
-                            .color(text_col)
-                            .font(Font::MONOSPACE),
+                        text(format_time(time)).size(15).color(text_col).font(Font::MONOSPACE),
                     ]
                     .align_y(Alignment::Center)
                     .padding([16, 20]),

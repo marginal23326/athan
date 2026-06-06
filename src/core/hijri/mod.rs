@@ -53,24 +53,15 @@ impl HijriDate {
             .unwrap_or(&"")
     }
 
-    pub fn from_gregorian(date: time::Date) -> Self {
-        let iso = match Date::try_new_iso(date.year(), date.month() as u8, date.day()) {
-            Ok(d) => d,
-            Err(_) => {
-                return HijriDate {
-                    year: 0,
-                    month: 1,
-                    day: 1,
-                };
-            }
-        };
+    pub fn from_gregorian(date: time::Date) -> Option<Self> {
+        let iso = Date::try_new_iso(date.year(), date.month() as u8, date.day()).ok()?;
         let hijri_cal = Hijri::new_umm_al_qura();
         let hijri = iso.to_calendar(hijri_cal);
-        HijriDate {
+        Some(HijriDate {
             year: hijri.era_year().year,
             month: hijri.month().ordinal,
             day: hijri.day_of_month().0,
-        }
+        })
     }
 
     pub fn display(&self) -> String {
@@ -83,8 +74,7 @@ impl HijriDate {
 }
 
 pub fn is_ramadan(date: time::Date) -> bool {
-    let h = HijriDate::from_gregorian(date);
-    h.month == 9
+    HijriDate::from_gregorian(date).map(|h| h.month == 9).unwrap_or(false)
 }
 
 #[cfg(test)]

@@ -1,12 +1,10 @@
 use crate::app::{App, Message};
-use crate::ui::components::{
-    adjustment_grid, adjustment_summary, labeled_input, labeled_picker, toggle_row,
-};
+use crate::ui::components::{adjustment_grid, adjustment_summary, labeled_input, labeled_picker, toggle_row};
 use crate::ui::styles;
 use athan::core::*;
 
 use iced::widget::text::Wrapping;
-use iced::widget::{button, column, container, row, scrollable, text, text_input, Space};
+use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Alignment, Element, Fill};
 
 fn modal_header<'a>(title: &'a str, on_close: Message) -> Element<'a, Message> {

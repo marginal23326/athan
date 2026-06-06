@@ -15,12 +15,7 @@ pub static DATE_FMT: &[time::format_description::FormatItem<'static>] =
 
 pub fn format_duration(d: time::Duration) -> String {
     let secs = d.whole_seconds().max(0);
-    format!(
-        "{:02}:{:02}:{:02}",
-        secs / 3600,
-        (secs % 3600) / 60,
-        secs % 60
-    )
+    format!("{:02}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -51,7 +46,11 @@ pub fn calculate_daily_prayer_data(
             asr_method,
             adjustments,
         ),
-        hijri_date: HijriDate::from_gregorian(date),
+        hijri_date: HijriDate::from_gregorian(date).unwrap_or(HijriDate {
+            year: 0,
+            month: 1,
+            day: 1,
+        }),
         qiblah: qiblah_direction(location.coordinates),
     }
 }

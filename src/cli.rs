@@ -91,10 +91,7 @@ pub fn run() -> Result<(), String> {
         let detected = detect_location()?;
         Location {
             name: detected.name,
-            coordinates: Coordinates::new(
-                cli.lat.unwrap_or(detected.lat),
-                cli.lon.unwrap_or(detected.lon),
-            ),
+            coordinates: Coordinates::new(cli.lat.unwrap_or(detected.lat), cli.lon.unwrap_or(detected.lon)),
             timezone_offset: cli.tz.unwrap_or(detected.offset),
             elevation: cli.elevation.unwrap_or(detected.elevation),
         }
@@ -122,8 +119,8 @@ pub fn run() -> Result<(), String> {
         .prayer_times
         .ok_or("Cannot compute prayer times for this location/date.")?;
 
-    let offset = time::UtcOffset::from_whole_seconds((location.timezone_offset * 3600.0) as i32)
-        .unwrap_or(time::UtcOffset::UTC);
+    let offset =
+        time::UtcOffset::from_whole_seconds((location.timezone_offset * 3600.0) as i32).unwrap_or(time::UtcOffset::UTC);
     let now_local = now.to_offset(offset);
 
     let (next_prayer, _next_time) = next_prayer(&prayer_times, now_local.time());
@@ -187,13 +184,7 @@ pub fn run() -> Result<(), String> {
         qiblah_compass_direction(data.qiblah)
     )
     .unwrap();
-    writeln!(
-        out,
-        "  Method: {} | Asr: {}",
-        method.description(),
-        asr.label()
-    )
-    .unwrap();
+    writeln!(out, "  Method: {} | Asr: {}", method.description(), asr.label()).unwrap();
     if cli.detect {
         writeln!(out, "  (Location auto-detected from IP)").unwrap();
     }

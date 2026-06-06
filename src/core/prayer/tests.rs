@@ -1,5 +1,5 @@
-use super::*;
 use super::spa::{SpaFunction, SpaInputs, spa_calculate};
+use super::*;
 
 fn make_date(y: i32, m: time::Month, d: u8) -> time::Date {
     time::Date::from_calendar_date(y, m, d).unwrap()
@@ -41,7 +41,13 @@ fn assert_all_times_valid(times: &PrayerTimes, label: &str) {
 
 fn calc_times(date: time::Date, coords: Coordinates, tz: f64, method: CalculationMethod) -> PrayerTimes {
     calculate_prayer_times(
-        date, coords, tz, 0.0, method, AsrMethod::Shafi, PrayerAdjustments::zero(),
+        date,
+        coords,
+        tz,
+        0.0,
+        method,
+        AsrMethod::Shafi,
+        PrayerAdjustments::zero(),
     )
     .unwrap_or_else(|| panic!("{method:?}: calculation returned None"))
 }
@@ -73,9 +79,7 @@ struct ApiRef {
 
 fn run_api_ref_tests(refs: &[ApiRef]) {
     for ref_data in refs {
-        let times = calc_times(
-            ref_data.date, ref_data.coords, ref_data.tz, ref_data.method,
-        );
+        let times = calc_times(ref_data.date, ref_data.coords, ref_data.tz, ref_data.method);
 
         let array = times.as_array();
         let mut failures = Vec::new();
@@ -93,8 +97,10 @@ fn run_api_ref_tests(refs: &[ApiRef]) {
                 eprintln!(
                     "  {}: got {:02}:{:02}, expected {:02}:{:02} (diff={}min)",
                     prayer.name(),
-                    actual / 60, actual % 60,
-                    expected / 60, expected % 60,
+                    actual / 60,
+                    actual % 60,
+                    expected / 60,
+                    expected % 60,
                     (actual - expected).abs()
                 );
             }
@@ -118,9 +124,15 @@ fn fajr_angle_sunrise_check() {
 
     // Dhuhr should be raw solar noon when no adjustments are configured.
     let tz = 6.0;
-    let spa_inputs = SpaInputs::new(date.year(), date.month() as u8 as i32, date.day() as u8 as i32, coords.latitude, coords.longitude)
-        .timezone(tz)
-        .function(SpaFunction::ZaRts);
+    let spa_inputs = SpaInputs::new(
+        date.year(),
+        date.month() as u8 as i32,
+        date.day() as u8 as i32,
+        coords.latitude,
+        coords.longitude,
+    )
+    .timezone(tz)
+    .function(SpaFunction::ZaRts);
     let spa_outputs = spa_calculate(&spa_inputs).unwrap();
     let transit = spa_outputs.suntransit.unwrap();
     let dhuhr_hr = times.dhuhr.as_hms().0 as f64 + times.dhuhr.as_hms().1 as f64 / 60.0;
@@ -435,7 +447,7 @@ fn london_high_lat_winter_vs_aladhan() {
     // giving Fajr=04:01, Isha=19:56 in winter. Should be 06:20, 17:38.
     let dates = [
         (make_date(2026, time::Month::December, 21), 0.0, (6, 20), (17, 38)),
-        (make_date(2026, time::Month::June, 21),     1.0, (2, 53), (23, 12)),
+        (make_date(2026, time::Month::June, 21), 1.0, (2, 53), (23, 12)),
     ];
     let coords = Coordinates::new(51.5074, -0.1278);
     for (date, tz, (efh, efm), (eih, eim)) in dates {
@@ -459,7 +471,9 @@ fn london_high_lat_winter_vs_aladhan() {
 fn equator_times_are_symmetric() {
     let times = calc_times(
         make_date(2026, time::Month::March, 20),
-        Coordinates::new(0.0, 0.0), 0.0, CalculationMethod::Mwl,
+        Coordinates::new(0.0, 0.0),
+        0.0,
+        CalculationMethod::Mwl,
     );
 
     let (sh, sm) = hm(&times.sunrise);
@@ -468,14 +482,20 @@ fn equator_times_are_symmetric() {
     let maghrib_mins = mh as i64 * 60 + mm as i64;
 
     assert!((sunrise_mins - 360).abs() <= 15, "Sunrise at equator: {sh:02}:{sm:02}");
-    assert!(((maghrib_mins - sunrise_mins) - 720).abs() <= 60, "Day length: {}min", maghrib_mins - sunrise_mins);
+    assert!(
+        ((maghrib_mins - sunrise_mins) - 720).abs() <= 60,
+        "Day length: {}min",
+        maghrib_mins - sunrise_mins
+    );
 }
 
 #[test]
 fn non_integer_timezone_kathmandu() {
     let times = calc_times(
         make_date(2026, time::Month::May, 24),
-        Coordinates::new(27.7172, 85.3240), 5.75, CalculationMethod::Karachi,
+        Coordinates::new(27.7172, 85.3240),
+        5.75,
+        CalculationMethod::Karachi,
     );
     assert_times_ordered(&times, "Kathmandu UTC+5:45");
 }
@@ -484,7 +504,9 @@ fn non_integer_timezone_kathmandu() {
 fn negative_timezone_west_hemisphere() {
     let times = calc_times(
         make_date(2026, time::Month::May, 24),
-        Coordinates::new(34.0522, -118.2437), -7.0, CalculationMethod::Isna,
+        Coordinates::new(34.0522, -118.2437),
+        -7.0,
+        CalculationMethod::Isna,
     );
     assert_times_ordered(&times, "LA UTC-7");
 }
@@ -493,7 +515,9 @@ fn negative_timezone_west_hemisphere() {
 fn near_date_line_works() {
     let times = calc_times(
         make_date(2026, time::Month::May, 24),
-        Coordinates::new(-18.0, 178.0), 12.0, CalculationMethod::Mwl,
+        Coordinates::new(-18.0, 178.0),
+        12.0,
+        CalculationMethod::Mwl,
     );
     assert_times_ordered(&times, "Fiji");
 }
@@ -502,7 +526,9 @@ fn near_date_line_works() {
 fn southern_hemisphere_antarctica_edge() {
     let times = calc_times(
         make_date(2026, time::Month::June, 21),
-        Coordinates::new(-66.5, 0.0), 0.0, CalculationMethod::Mwl,
+        Coordinates::new(-66.5, 0.0),
+        0.0,
+        CalculationMethod::Mwl,
     );
     assert_all_times_valid(&times, "Antarctic");
 }
@@ -528,13 +554,33 @@ fn prayer_times_throughout_year() {
 fn custom_fajr_angle_extremes() {
     let date = make_date(2026, time::Month::May, 24);
     let coords = Coordinates::new(23.757283, 90.369712);
-    let shallow = calc_times(date, coords, 6.0, CalculationMethod::Custom { fajr_angle: 12.0, isha_angle: 12.0 });
-    let steep = calc_times(date, coords, 6.0, CalculationMethod::Custom { fajr_angle: 21.0, isha_angle: 21.0 });
+    let shallow = calc_times(
+        date,
+        coords,
+        6.0,
+        CalculationMethod::Custom {
+            fajr_angle: 12.0,
+            isha_angle: 12.0,
+        },
+    );
+    let steep = calc_times(
+        date,
+        coords,
+        6.0,
+        CalculationMethod::Custom {
+            fajr_angle: 21.0,
+            isha_angle: 21.0,
+        },
+    );
 
-    assert!(time_to_secs(shallow.fajr) > time_to_secs(steep.fajr),
-        "Shallow (12°) Fajr should be later than steep (21°)");
-    assert!(time_to_secs(shallow.isha) < time_to_secs(steep.isha),
-        "Shallow (12°) Isha should be earlier than steep (21°)");
+    assert!(
+        time_to_secs(shallow.fajr) > time_to_secs(steep.fajr),
+        "Shallow (12°) Fajr should be later than steep (21°)"
+    );
+    assert!(
+        time_to_secs(shallow.isha) < time_to_secs(steep.isha),
+        "Shallow (12°) Isha should be earlier than steep (21°)"
+    );
 }
 
 // Physical constraints
@@ -543,21 +589,27 @@ fn custom_fajr_angle_extremes() {
 fn fajr_is_before_sunrise_worldwide() {
     let date = make_date(2026, time::Month::June, 21);
     for (name, coords, tz) in [
-        ("Tokyo",       Coordinates::new(35.6762, 139.6503),  9.0),
-        ("Cairo",       Coordinates::new(30.0444, 31.2357),   2.0),
-        ("Moscow",      Coordinates::new(55.7558, 37.6173),   3.0),
-        ("Delhi",       Coordinates::new(28.6139, 77.2090),   5.5),
-        ("Jakarta",     Coordinates::new(-6.2088, 106.8456),  7.0),
-        ("Cape Town",   Coordinates::new(-33.9249, 18.4241),  2.0),
-        ("Buenos Aires",Coordinates::new(-34.6037, -58.3816),-3.0),
+        ("Tokyo", Coordinates::new(35.6762, 139.6503), 9.0),
+        ("Cairo", Coordinates::new(30.0444, 31.2357), 2.0),
+        ("Moscow", Coordinates::new(55.7558, 37.6173), 3.0),
+        ("Delhi", Coordinates::new(28.6139, 77.2090), 5.5),
+        ("Jakarta", Coordinates::new(-6.2088, 106.8456), 7.0),
+        ("Cape Town", Coordinates::new(-33.9249, 18.4241), 2.0),
+        ("Buenos Aires", Coordinates::new(-34.6037, -58.3816), -3.0),
     ] {
         let times = calc_times(date, coords, tz, CalculationMethod::Mwl);
-        assert!(time_to_secs(times.fajr) < time_to_secs(times.sunrise),
-            "{name}: Fajr not before Sunrise");
-        assert!(time_to_secs(times.asr) < time_to_secs(times.maghrib),
-            "{name}: Asr not before Maghrib");
-        assert!(time_to_secs(times.isha) > time_to_secs(times.maghrib),
-            "{name}: Isha not after Maghrib");
+        assert!(
+            time_to_secs(times.fajr) < time_to_secs(times.sunrise),
+            "{name}: Fajr not before Sunrise"
+        );
+        assert!(
+            time_to_secs(times.asr) < time_to_secs(times.maghrib),
+            "{name}: Asr not before Maghrib"
+        );
+        assert!(
+            time_to_secs(times.isha) > time_to_secs(times.maghrib),
+            "{name}: Isha not after Maghrib"
+        );
     }
 }
 
@@ -565,9 +617,9 @@ fn fajr_is_before_sunrise_worldwide() {
 fn dhuhr_tracks_solar_noon_across_longitudes() {
     let date = make_date(2026, time::Month::May, 24);
     for (name, coords, tz) in [
-        ("GMT",   Coordinates::new(51.5, 0.0),   0.0),
+        ("GMT", Coordinates::new(51.5, 0.0), 0.0),
         ("Perth", Coordinates::new(-31.9, 115.9), 8.0),
-        ("NYC",   Coordinates::new(40.7, -75.0), -5.0),
+        ("NYC", Coordinates::new(40.7, -75.0), -5.0),
     ] {
         let times = calc_times(date, coords, tz, CalculationMethod::Mwl);
         let (h, m) = hm(&times.dhuhr);
@@ -581,8 +633,13 @@ fn latitude_extremes_return_none_or_sensible() {
     let date = make_date(2026, time::Month::May, 24);
     for (label, lat) in [("North Pole", 90.0), ("South Pole", -90.0)] {
         if let Some(times) = calculate_prayer_times(
-            date, Coordinates::new(lat, 0.0), 0.0, 0.0,
-            CalculationMethod::Mwl, AsrMethod::Shafi, PrayerAdjustments::zero(),
+            date,
+            Coordinates::new(lat, 0.0),
+            0.0,
+            0.0,
+            CalculationMethod::Mwl,
+            AsrMethod::Shafi,
+            PrayerAdjustments::zero(),
         ) {
             assert_all_times_valid(&times, label);
         }
@@ -594,9 +651,9 @@ fn latitude_extremes_return_none_or_sensible() {
 #[test]
 fn spa_transit_known_values() {
     for (label, lat, lon, tz, lo, hi) in [
-        ("Dhaka",  23.757283, 90.369712, 6.0, 11.5, 12.5),
+        ("Dhaka", 23.757283, 90.369712, 6.0, 11.5, 12.5),
         ("Makkah", 21.422487, 39.826206, 3.0, 12.0, 12.4),
-        ("London", 51.5074,   -0.1278,   1.0, 12.5, 13.5),
+        ("London", 51.5074, -0.1278, 1.0, 12.5, 13.5),
     ] {
         let spa = SpaInputs::new(2026, 5, 24, lat, lon)
             .timezone(tz)
@@ -611,7 +668,15 @@ fn umm_al_qura_fajr_is_angle_based_not_interval() {
     let date = make_date(2026, time::Month::May, 24);
     let coords = Coordinates::new(23.757283, 90.369712);
     let uaq = calc_times(date, coords, 6.0, CalculationMethod::UmmAlQura);
-    let custom = calc_times(date, coords, 6.0, CalculationMethod::Custom { fajr_angle: 18.5, isha_angle: 18.5 });
+    let custom = calc_times(
+        date,
+        coords,
+        6.0,
+        CalculationMethod::Custom {
+            fajr_angle: 18.5,
+            isha_angle: 18.5,
+        },
+    );
     let diff = (time_to_secs(uaq.fajr) - time_to_secs(custom.fajr)).abs();
     assert!(diff <= 120, "UmmAlQura Fajr differs from Custom(18.5°) by {diff}s");
 }
@@ -623,12 +688,15 @@ fn bulk_calculation_smoke_test() {
     for offset in 0..365 {
         let _ = calc_times(
             start.saturating_add(time::Duration::days(offset)),
-            coords, 6.0, CalculationMethod::UmmAlQura,
+            coords,
+            6.0,
+            CalculationMethod::UmmAlQura,
         );
     }
 }
 
 #[test]
+#[rustfmt::skip]
 fn verify_solar_noon_against_api_reference() {
     for (name, lat, lon, tz, method, date, (eh, em)) in [
         ("Dhaka",   23.757283, 90.369712, 6.0, CalculationMethod::UmmAlQura, make_date(2026, time::Month::May, 24), (11, 55)),
@@ -641,7 +709,9 @@ fn verify_solar_noon_against_api_reference() {
         let times = calc_times(date, Coordinates::new(lat, lon), tz, method);
         let (ah, am) = hm(&times.dhuhr);
         let diff = (ah as i64 * 60 + am as i64) - (eh as i64 * 60 + em as i64);
-        assert!(diff.abs() <= 2,
-            "{name}: Dhuhr {ah:02}:{am:02} vs API {eh:02}:{em:02} (diff={diff}min)");
+        assert!(
+            diff.abs() <= 2,
+            "{name}: Dhuhr {ah:02}:{am:02} vs API {eh:02}:{em:02} (diff={diff}min)"
+        );
     }
 }

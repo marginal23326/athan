@@ -1,7 +1,7 @@
 mod app;
 mod ui;
 
-use app::{new, update, App, Message};
+use app::{App, Message, new, update};
 use iced::widget::{center, mouse_area, opaque, stack};
 use iced::{Element, Subscription};
 
@@ -24,12 +24,12 @@ fn view(app: &App) -> Element<'_, Message> {
                 base,
                 settings_layer,
                 opaque(
-                    mouse_area(
-                        center(opaque(ui::modals::adjustments_modal(app))).style(|_| iced::widget::container::Style {
+                    mouse_area(center(opaque(ui::modals::adjustments_modal(app))).style(|_| {
+                        iced::widget::container::Style {
                             background: Some(ui::styles::MODAL_BACKDROP.into()),
                             ..Default::default()
-                        })
-                    )
+                        }
+                    }))
                     .on_press(Message::ToggleAdjustments)
                 )
             ]

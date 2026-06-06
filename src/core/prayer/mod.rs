@@ -68,7 +68,13 @@ struct SolarPosition {
     sunset: f64,
 }
 
-fn calculate_solar_position(date: time::Date, original_lat: f64, lon: f64, timezone_hours: f64, elevation: f64) -> SolarPosition {
+fn calculate_solar_position(
+    date: time::Date,
+    original_lat: f64,
+    lon: f64,
+    timezone_hours: f64,
+    elevation: f64,
+) -> SolarPosition {
     let mut lat = original_lat;
 
     for i in 0..2 {

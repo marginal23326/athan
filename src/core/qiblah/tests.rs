@@ -93,13 +93,12 @@ fn qiblah_on_equator_at_mecca_longitude() {
     assert_bearing_close(eq, 0.0, 1.0);
 }
 
-
-
 #[test]
 fn qiblah_compass_all_directions() {
     // Verify all 16 compass points
-    let dirs = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-                "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"];
+    let dirs = [
+        "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
+    ];
     for (i, dir) in dirs.iter().enumerate() {
         let angle = i as f64 * 22.5;
         assert_eq!(qiblah_compass_direction(angle), *dir, "angle {angle}");
@@ -117,5 +116,3 @@ fn qiblah_nearby_locations_point_roughly_towards_mecca() {
     let taif = qiblah_direction(Coordinates::new(21.2700, 40.4158));
     assert_bearing_close(taif, 288.8, 10.0); // roughly west
 }
-
-

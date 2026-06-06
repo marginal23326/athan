@@ -2,7 +2,7 @@ use crate::app::{App, Message};
 use crate::ui::styles;
 use athan::core::*;
 
-use iced::widget::{column, pick_list, row, text, text_input, toggler, Space};
+use iced::widget::{Space, column, pick_list, row, text, text_input, toggler};
 use iced::{Alignment, Element, Fill};
 use std::borrow::Borrow;
 
@@ -44,7 +44,11 @@ where
     .into()
 }
 
-pub fn toggle_row<'a>(label: &'a str, is_active: bool, on_toggle: impl Fn(bool) -> Message + 'a) -> Element<'a, Message> {
+pub fn toggle_row<'a>(
+    label: &'a str,
+    is_active: bool,
+    on_toggle: impl Fn(bool) -> Message + 'a,
+) -> Element<'a, Message> {
     row![
         text(label).size(14).color(styles::TEXT_MUTED),
         Space::new().width(Fill),
