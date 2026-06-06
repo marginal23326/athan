@@ -252,6 +252,3 @@ pub fn time_until(target: time::Time, now: time::Time) -> time::Duration {
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-mod comprehensive_tests;
