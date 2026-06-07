@@ -1,4 +1,3 @@
-use clap::{Parser, ValueEnum};
 use std::fmt::Write;
 use thiserror::Error;
 
@@ -12,57 +11,75 @@ pub enum CliError {
     NoPrayerTimes,
 }
 
-#[derive(Parser)]
-#[command(name = "athan", version, about = "Islamic prayer times calculator")]
+/// Islamic prayer times calculator
+#[derive(argp::FromArgs)]
 pub struct Cli {
-    /// Latitude in degrees
-    #[arg(long)]
+    /// Latitude in degrees.
+    #[argp(option)]
     pub lat: Option<f64>,
 
-    /// Longitude in degrees
-    #[arg(long)]
+    /// Longitude in degrees.
+    #[argp(option)]
     pub lon: Option<f64>,
 
-    /// Timezone offset from UTC in hours (e.g. 3, -4, 5.5)
-    #[arg(long)]
+    /// Timezone offset from UTC in hours (e.g. 3, -4, 5.5).
+    #[argp(option)]
     pub tz: Option<f64>,
 
-    /// Elevation in meters
-    #[arg(long)]
+    /// Elevation in meters.
+    #[argp(option)]
     pub elevation: Option<f64>,
 
-    /// Location name
-    #[arg(long, default_value = "Custom")]
+    /// Location name.
+    #[argp(option, default = "String::from(\"Custom\")")]
     pub location: String,
 
-    /// Calculation method
-    #[arg(long, value_enum, default_value_t = MethodArg::UmmAlQura)]
+    /// Calculation method.
+    #[argp(option, default = "MethodArg::UmmAlQura")]
     pub method: MethodArg,
 
-    /// Asr juristic method
-    #[arg(long, value_enum, default_value_t = AsrArg::Shafi)]
+    /// Asr juristic method.
+    #[argp(option, default = "AsrArg::Shafi")]
     pub asr: AsrArg,
 
-    /// Auto-detect location from IP (requires network)
-    #[arg(long)]
+    /// Auto-detect location from IP (requires network).
+    #[cfg(feature = "detect")]
+    #[argp(switch)]
     pub detect: bool,
 
-    /// Hijri date display
-    #[arg(long)]
+    /// Hijri date display.
+    #[cfg(feature = "hijri")]
+    #[argp(switch)]
     pub hijri: bool,
 
-    /// Enable Daylight Saving Time (+1 hr)
-    #[arg(long)]
+    /// Enable Daylight Saving Time (+1 hr).
+    #[argp(switch)]
     pub dst: bool,
 }
 
-#[derive(Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy)]
 pub enum MethodArg {
     Mwl,
     Egypt,
     Karachi,
     UmmAlQura,
     Isna,
+}
+
+impl argp::FromArgValue for MethodArg {
+    fn from_arg_value(value: &std::ffi::OsStr) -> Result<Self, String> {
+        match value.to_str() {
+            Some("mwl") => Ok(MethodArg::Mwl),
+            Some("egypt") => Ok(MethodArg::Egypt),
+            Some("karachi") => Ok(MethodArg::Karachi),
+            Some("umm-al-qura" | "ummalqura") => Ok(MethodArg::UmmAlQura),
+            Some("isna") => Ok(MethodArg::Isna),
+            Some(other) => Err(format!(
+                "unknown method '{other}'. Valid values: mwl, egypt, karachi, umm-al-qura, isna"
+            )),
+            None => Err("method value is not valid UTF-8".into()),
+        }
+    }
 }
 
 impl From<MethodArg> for CalculationMethod {
@@ -77,10 +94,21 @@ impl From<MethodArg> for CalculationMethod {
     }
 }
 
-#[derive(Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy)]
 pub enum AsrArg {
     Shafi,
     Hanafi,
+}
+
+impl argp::FromArgValue for AsrArg {
+    fn from_arg_value(value: &std::ffi::OsStr) -> Result<Self, String> {
+        match value.to_str() {
+            Some("shafi") => Ok(AsrArg::Shafi),
+            Some("hanafi") => Ok(AsrArg::Hanafi),
+            Some(other) => Err(format!("unknown asr method '{other}'. Valid values: shafi, hanafi")),
+            None => Err("asr value is not valid UTF-8".into()),
+        }
+    }
 }
 
 impl From<AsrArg> for AsrMethod {
@@ -93,33 +121,50 @@ impl From<AsrArg> for AsrMethod {
 }
 
 pub fn run() -> Result<(), CliError> {
-    let cli = Cli::parse();
+    let cli: Cli = argp::parse_args_or_exit(argp::DEFAULT);
 
-    let location = if cli.detect {
-        match detect_location() {
-            Ok(detected) => Location {
-                name: detected.name,
-                coordinates: Coordinates::new(cli.lat.unwrap_or(detected.lat), cli.lon.unwrap_or(detected.lon)),
-                timezone_offset: cli.tz.unwrap_or(detected.offset),
+    let location = {
+        #[cfg(feature = "detect")]
+        if cli.detect {
+            match detect_location() {
+                Ok(detected) => Location {
+                    name: detected.name,
+                    coordinates: Coordinates::new(cli.lat.unwrap_or(detected.lat), cli.lon.unwrap_or(detected.lon)),
+                    timezone_offset: cli.tz.unwrap_or(detected.offset),
+                    dst: cli.dst,
+                    elevation: cli.elevation.unwrap_or(detected.elevation),
+                },
+                Err(e) => {
+                    eprintln!("Warning: could not detect location from IP ({e}). Falling back to Makkah.");
+                    Location::default()
+                }
+            }
+        } else {
+            let (lat, lon, tz) = match (cli.lat, cli.lon, cli.tz) {
+                (Some(lat), Some(lon), Some(tz)) => (lat, lon, tz),
+                _ => return Err(CliError::Usage("--lat, --lon, and --tz are required (or use --detect)")),
+            };
+            Location {
+                name: cli.location,
+                coordinates: Coordinates::new(lat, lon),
+                timezone_offset: tz,
                 dst: cli.dst,
-                elevation: cli.elevation.unwrap_or(detected.elevation),
-            },
-            Err(e) => {
-                eprintln!("Warning: could not detect location from IP ({e}). Falling back to Makkah.");
-                Location::default()
+                elevation: cli.elevation.unwrap_or(0.0),
             }
         }
-    } else {
-        let (lat, lon, tz) = match (cli.lat, cli.lon, cli.tz) {
-            (Some(lat), Some(lon), Some(tz)) => (lat, lon, tz),
-            _ => return Err(CliError::Usage("--lat, --lon, and --tz are required (or use --detect)")),
-        };
-        Location {
-            name: cli.location,
-            coordinates: Coordinates::new(lat, lon),
-            timezone_offset: tz,
-            dst: cli.dst,
-            elevation: cli.elevation.unwrap_or(0.0),
+        #[cfg(not(feature = "detect"))]
+        {
+            let (lat, lon, tz) = match (cli.lat, cli.lon, cli.tz) {
+                (Some(lat), Some(lon), Some(tz)) => (lat, lon, tz),
+                _ => return Err(CliError::Usage("--lat, --lon, and --tz are required")),
+            };
+            Location {
+                name: cli.location,
+                coordinates: Coordinates::new(lat, lon),
+                timezone_offset: tz,
+                dst: cli.dst,
+                elevation: cli.elevation.unwrap_or(0.0),
+            }
         }
     };
 
@@ -143,6 +188,7 @@ pub fn run() -> Result<(), CliError> {
     let mut out = String::new();
 
     writeln!(out, "  {}", &location.name).unwrap();
+    #[cfg(feature = "hijri")]
     if cli.hijri {
         match &data.hijri_date {
             Some(h) => writeln!(out, "  {}", h.display()).unwrap(),
@@ -151,6 +197,8 @@ pub fn run() -> Result<(), CliError> {
     } else {
         writeln!(out, "  {date_str}").unwrap();
     }
+    #[cfg(not(feature = "hijri"))]
+    writeln!(out, "  {date_str}").unwrap();
     writeln!(out).unwrap();
 
     let times = prayer_times.as_array();
@@ -195,6 +243,7 @@ pub fn run() -> Result<(), CliError> {
     )
     .unwrap();
     writeln!(out, "  Method: {} | Asr: {}", method.description(), asr.label()).unwrap();
+    #[cfg(feature = "detect")]
     if cli.detect {
         writeln!(out, "  (Location auto-detected from IP)").unwrap();
     }

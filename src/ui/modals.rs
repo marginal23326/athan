@@ -111,18 +111,27 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
     ]
     .spacing(8);
 
-    let interface_group = column![
-        text("Interface Options").size(13).color(styles::TEXT_PRIMARY),
+    #[allow(unused_mut)]
+    let mut interface_items: Vec<Element<Message>> = vec![
+        text("Interface Options").size(13).color(styles::TEXT_PRIMARY).into(),
         toggle_row("Show Arabic Names", app.show_arabic, |_| Message::ToggleArabic),
-        toggle_row("Show Hijri Date", app.show_hijri, |_| Message::ToggleHijri),
-    ]
-    .spacing(12);
+    ];
 
-    let location_section = column![
-        text("Location Data").size(13).color(styles::TEXT_PRIMARY),
-        location_grid,
-        toggle_row("Daylight Saving Time (+1 hr)", app.location.dst, |_| Message::ToggleDst),
-        {
+    #[cfg(feature = "hijri")]
+    interface_items.push(toggle_row("Show Hijri Date", app.show_hijri, |_| Message::ToggleHijri));
+
+    let interface_group = iced::widget::Column::with_children(interface_items).spacing(12);
+
+    let location_section = {
+        #[allow(unused_mut)]
+        let mut items: Vec<Element<Message>> = vec![
+            text("Location Data").size(13).color(styles::TEXT_PRIMARY).into(),
+            location_grid.into(),
+            toggle_row("Daylight Saving Time (+1 hr)", app.location.dst, |_| Message::ToggleDst),
+        ];
+
+        #[cfg(feature = "detect")]
+        items.push({
             let mut btn = button(
                 text(if app.is_detecting {
                     "Detecting…"
@@ -137,10 +146,11 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
             if !app.is_detecting {
                 btn = btn.on_press(Message::DetectLocation);
             }
-            btn
-        },
-    ]
-    .spacing(12);
+            btn.into()
+        });
+
+        iced::widget::Column::with_children(items).spacing(12)
+    };
 
     let mut inner_content =
         column![header, location_section, calc_group, adjustment_group, interface_group].spacing(20);

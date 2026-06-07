@@ -19,6 +19,7 @@ fn invalid_month_names_do_not_panic() {
     assert_eq!(too_high.arabic_month_name(), "");
 }
 
+#[cfg(feature = "hijri")]
 #[test]
 fn known_hijri_conversion_2026() {
     let hijri = HijriDate::from_gregorian(time::Date::from_calendar_date(2026, time::Month::May, 24).unwrap()).unwrap();
@@ -27,6 +28,7 @@ fn known_hijri_conversion_2026() {
     assert_eq!(hijri.day, 7, "day: got {}", hijri.day);
 }
 
+#[cfg(feature = "hijri")]
 #[test]
 fn known_hijri_conversion_ramadan() {
     let hijri =
@@ -36,6 +38,7 @@ fn known_hijri_conversion_ramadan() {
     assert_eq!(hijri.day, 1);
 }
 
+#[cfg(feature = "hijri")]
 #[test]
 fn known_hijri_conversion_1447_start() {
     for day in 25..=30 {

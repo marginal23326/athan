@@ -14,17 +14,23 @@ codegen-units = 1
 panic = "abort"
 strip = true
 
+[features]
+default = ["detect"]
+cli = ["dep:argp"]
+hijri = ["dep:icu_calendar"]
+detect = ["dep:minreq"]
+
 [dependencies]
 thiserror = "2"
 time = { version = "0.3", features = ["formatting", "macros"] }
-icu_calendar = { version = "2.2", default-features = false, features = ["compiled_data"] }
-minreq = { version = "2.14", features = ["json-using-serde", "https"] }
+icu_calendar = { version = "2", default-features = false, features = ["compiled_data"], optional = true }
 serde = { version = "1", features = ["derive"] }
-clap = { version = "4", features = ["derive"] }
+argp = { version = "0.4", optional = true }
+tokio = { version = "1", features = ["rt"] }
+minreq = { version = "2", features = ["json-using-serde"], optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool", "wayland"] }
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool"] }
-tokio = { version = "1", features = ["rt"] }

@@ -13,6 +13,7 @@ pub enum Message {
     ToggleDst,
     ToggleSettings,
     ToggleArabic,
+    #[cfg(feature = "hijri")]
     ToggleHijri,
     ToggleAdjustments,
     LocationNameChanged(String),
@@ -20,7 +21,9 @@ pub enum Message {
     FocusNext,
     FocusPrevious,
     EscapePressed,
+    #[cfg(feature = "detect")]
     DetectLocation,
+    #[cfg(feature = "detect")]
     LocationDetected(Result<LocationData, DetectError>),
 }
 
@@ -45,7 +48,9 @@ pub struct App {
     pub settings_open: bool,
     pub adjustments_open: bool,
     pub show_arabic: bool,
+    #[cfg(feature = "hijri")]
     pub show_hijri: bool,
+    #[cfg(feature = "detect")]
     pub is_detecting: bool,
     pub inputs: SettingsState,
     pub error: Option<String>,
@@ -73,7 +78,9 @@ impl Default for App {
             settings_open: false,
             adjustments_open: false,
             show_arabic: false,
+            #[cfg(feature = "hijri")]
             show_hijri: false,
+            #[cfg(feature = "detect")]
             is_detecting: false,
             inputs: SettingsState {
                 lat_input: loc.coordinates.latitude.to_string(),
@@ -185,6 +192,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 app.recalculate();
             }
         }
+        #[cfg(feature = "detect")]
         Message::DetectLocation => {
             app.is_detecting = true;
 
@@ -198,6 +206,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 Message::LocationDetected,
             );
         }
+        #[cfg(feature = "detect")]
         Message::LocationDetected(Ok(data)) => {
             app.is_detecting = false;
             app.inputs.loc_name_input = data.name.clone();
@@ -213,6 +222,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.location.elevation = data.elevation;
             app.recalculate();
         }
+        #[cfg(feature = "detect")]
         Message::LocationDetected(Err(e)) => {
             app.is_detecting = false;
             app.error = Some(e.to_string());
@@ -229,6 +239,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::ToggleArabic => app.show_arabic = !app.show_arabic,
+        #[cfg(feature = "hijri")]
         Message::ToggleHijri => app.show_hijri = !app.show_hijri,
         Message::ToggleAdjustments => app.adjustments_open = !app.adjustments_open,
         Message::FocusNext => return iced::widget::operation::focus_next(),

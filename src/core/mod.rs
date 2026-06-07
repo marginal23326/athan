@@ -1,3 +1,4 @@
+#[cfg(feature = "detect")]
 pub mod detect;
 pub mod format;
 pub mod hijri;
@@ -5,6 +6,7 @@ pub mod prayer;
 pub mod qiblah;
 pub mod types;
 
+#[cfg(feature = "detect")]
 pub use detect::*;
 pub use format::*;
 pub use hijri::*;
@@ -41,7 +43,10 @@ pub fn calculate_daily_prayer_data(
             asr_method,
             adjustments,
         ),
+        #[cfg(feature = "hijri")]
         hijri_date: HijriDate::from_gregorian(date),
+        #[cfg(not(feature = "hijri"))]
+        hijri_date: None,
         qiblah: qiblah_direction(location.coordinates),
     }
 }

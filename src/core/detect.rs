@@ -51,7 +51,7 @@ struct ElevationResponse {
 }
 
 pub fn detect_location() -> Result<LocationData, DetectError> {
-    let response = minreq::get("https://ipwhois.app/json/")
+    let response = minreq::get("http://ipwhois.app/json/")
         .send()
         .map_err(|e| DetectError::Network(e.to_string()))?;
 
@@ -65,7 +65,7 @@ pub fn detect_location() -> Result<LocationData, DetectError> {
     let lon = api.longitude.unwrap_or(0.0);
 
     let elevation = minreq::get(format!(
-        "https://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lon}"
+        "http://api.open-meteo.com/v1/elevation?latitude={lat}&longitude={lon}"
     ))
     .send()
     .ok()

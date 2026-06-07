@@ -82,14 +82,15 @@ fn theme(_app: &App) -> iced::Theme {
 }
 
 fn main() {
+    #[cfg(feature = "cli")]
     if std::env::args().len() > 1 {
         if let Err(e) = athan::cli::run() {
             eprintln!("Error: {e}");
             std::process::exit(1);
         }
-    } else {
-        launch_gui().expect("GUI error");
+        return;
     }
+    launch_gui().expect("GUI error");
 }
 
 fn launch_gui() -> iced::Result {

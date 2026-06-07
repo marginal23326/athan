@@ -19,24 +19,7 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
     let top_bar = row![
         column![
             text(&app.location.name).size(18).color(styles::TEXT_PRIMARY),
-            if app.show_hijri {
-                text(match &app.hijri_date {
-                    Some(h) => {
-                        if app.show_arabic {
-                            h.arabic_display()
-                        } else {
-                            h.display()
-                        }
-                    }
-                    None => "Hijri date unavailable".into(),
-                })
-                .size(13)
-                .color(styles::ACCENT)
-            } else {
-                text(now_local.format(DATE_FMT).unwrap_or_default())
-                    .size(13)
-                    .color(styles::TEXT_MUTED)
-            }
+            hijri_or_date_label(app, now_local)
         ]
         .spacing(2),
         Space::new().width(Fill),
@@ -79,6 +62,38 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
     .width(Fill)
     .height(Fill)
     .into()
+}
+
+#[cfg(feature = "hijri")]
+fn hijri_or_date_label<'a>(app: &'a App, now_local: time::OffsetDateTime) -> Element<'a, Message> {
+    if app.show_hijri {
+        text(match &app.hijri_date {
+            Some(h) => {
+                if app.show_arabic {
+                    h.arabic_display()
+                } else {
+                    h.display()
+                }
+            }
+            None => "Hijri date unavailable".into(),
+        })
+        .size(13)
+        .color(styles::ACCENT)
+        .into()
+    } else {
+        text(now_local.format(DATE_FMT).unwrap_or_default())
+            .size(13)
+            .color(styles::TEXT_MUTED)
+            .into()
+    }
+}
+
+#[cfg(not(feature = "hijri"))]
+fn hijri_or_date_label<'a>(_app: &'a App, now_local: time::OffsetDateTime) -> Element<'a, Message> {
+    text(now_local.format(DATE_FMT).unwrap_or_default())
+        .size(13)
+        .color(styles::TEXT_MUTED)
+        .into()
 }
 
 fn hero_section(

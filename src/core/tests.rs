@@ -13,6 +13,7 @@ fn daily_prayer_data_uses_location_date_ahead_of_utc() {
         name: "Dhaka".into(),
         coordinates: Coordinates::new(23.757283, 90.369712),
         timezone_offset: 6.0,
+        dst: false,
         elevation: 0.0,
     };
     let now = utc_datetime(2026, time::Month::May, 22, 19, 0);
@@ -27,7 +28,10 @@ fn daily_prayer_data_uses_location_date_ahead_of_utc() {
     );
 
     assert_eq!(data.date, expected_date);
+    #[cfg(feature = "hijri")]
     assert_eq!(data.hijri_date, Some(HijriDate::from_gregorian(expected_date).unwrap()));
+    #[cfg(not(feature = "hijri"))]
+    assert_eq!(data.hijri_date, None);
     assert_eq!(
         data.prayer_times,
         calculate_prayer_times(
@@ -48,6 +52,7 @@ fn daily_prayer_data_uses_location_date_behind_utc() {
         name: "New York".into(),
         coordinates: Coordinates::new(40.7128, -74.0060),
         timezone_offset: -4.0,
+        dst: false,
         elevation: 0.0,
     };
     let now = utc_datetime(2026, time::Month::May, 23, 2, 0);
@@ -62,7 +67,10 @@ fn daily_prayer_data_uses_location_date_behind_utc() {
     );
 
     assert_eq!(data.date, expected_date);
+    #[cfg(feature = "hijri")]
     assert_eq!(data.hijri_date, Some(HijriDate::from_gregorian(expected_date).unwrap()));
+    #[cfg(not(feature = "hijri"))]
+    assert_eq!(data.hijri_date, None);
     assert_eq!(
         data.prayer_times,
         calculate_prayer_times(

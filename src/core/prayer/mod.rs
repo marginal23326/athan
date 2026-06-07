@@ -32,14 +32,12 @@ struct PrayerParams {
 
 fn get_prayer_params(method: CalculationMethod, date: time::Date) -> PrayerParams {
     let (fajr_angle, isha_angle, isha_interval_hours) = method.prayer_params();
+    let ramadan_override = method == CalculationMethod::UmmAlQura && crate::core::hijri::is_ramadan(date);
+
     PrayerParams {
         fajr_angle,
         isha_angle,
-        isha_interval_hours: if method == CalculationMethod::UmmAlQura && crate::core::hijri::is_ramadan(date) {
-            2.0
-        } else {
-            isha_interval_hours
-        },
+        isha_interval_hours: if ramadan_override { 2.0 } else { isha_interval_hours },
     }
 }
 
