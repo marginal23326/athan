@@ -50,6 +50,10 @@ pub struct Cli {
     /// Hijri date display
     #[arg(long)]
     pub hijri: bool,
+
+    /// Enable Daylight Saving Time (+1 hr)
+    #[arg(long)]
+    pub dst: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -97,6 +101,7 @@ pub fn run() -> Result<(), CliError> {
                 name: detected.name,
                 coordinates: Coordinates::new(cli.lat.unwrap_or(detected.lat), cli.lon.unwrap_or(detected.lon)),
                 timezone_offset: cli.tz.unwrap_or(detected.offset),
+                dst: cli.dst,
                 elevation: cli.elevation.unwrap_or(detected.elevation),
             },
             Err(e) => {
@@ -113,6 +118,7 @@ pub fn run() -> Result<(), CliError> {
             name: cli.location,
             coordinates: Coordinates::new(lat, lon),
             timezone_offset: tz,
+            dst: cli.dst,
             elevation: cli.elevation.unwrap_or(0.0),
         }
     };
@@ -126,8 +132,8 @@ pub fn run() -> Result<(), CliError> {
 
     let prayer_times = data.prayer_times.ok_or(CliError::NoPrayerTimes)?;
 
-    let offset =
-        time::UtcOffset::from_whole_seconds((location.timezone_offset * 3600.0) as i32).unwrap_or(time::UtcOffset::UTC);
+    let offset = time::UtcOffset::from_whole_seconds((location.effective_timezone_offset() * 3600.0) as i32)
+        .unwrap_or(time::UtcOffset::UTC);
     let now_local = now.to_offset(offset);
 
     let (next_prayer, _next_time) = next_prayer(&prayer_times, now_local.time());

@@ -121,6 +121,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
     let location_section = column![
         text("Location Data").size(13).color(styles::TEXT_PRIMARY),
         location_grid,
+        toggle_row("Daylight Saving Time (+1 hr)", app.location.dst, |_| Message::ToggleDst),
         {
             let mut btn = button(
                 text(if app.is_detecting {
@@ -158,7 +159,9 @@ pub fn adjustments_modal(app: &App) -> Element<'_, Message> {
     let header = modal_header("Minute Adjustments", Message::ToggleAdjustments);
 
     container(scrollable(
-        column![header, adjustment_grid(app)].spacing(20).padding(20),
+        column![header, adjustment_grid(&app.inputs.adjustment_inputs)]
+            .spacing(20)
+            .padding(20),
     ))
     .width(360)
     .style(styles::surface_card)

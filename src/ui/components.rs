@@ -1,4 +1,4 @@
-use crate::app::{App, Message};
+use crate::app::Message;
 use crate::ui::styles;
 use athan::core::*;
 
@@ -73,25 +73,25 @@ pub fn toggle_row<'a>(
     .into()
 }
 
-pub fn adjustment_input<'a>(app: &'a App, prayer: Prayer) -> Element<'a, Message> {
-    let val = app.adjustment_input(prayer);
+pub fn adjustment_input<'a>(inputs: &'a [String; Prayer::COUNT], prayer: Prayer) -> Element<'a, Message> {
+    let val = &inputs[prayer.index()];
     let is_invalid = val.parse::<i32>().map_or(true, |v| !(-120..=120).contains(&v));
     labeled_input(prayer.name(), val, is_invalid, move |value| {
         Message::AdjustmentChanged(prayer, value)
     })
 }
 
-pub fn adjustment_grid(app: &App) -> Element<'_, Message> {
+pub fn adjustment_grid(inputs: &[String; Prayer::COUNT]) -> Element<'_, Message> {
     let rows: Vec<Element<Message>> = Prayer::all()
         .chunks(2)
         .map(|chunk| {
-            let inputs: Vec<Element<Message>> = chunk
+            let elems: Vec<Element<Message>> = chunk
                 .iter()
                 .copied()
-                .map(|prayer| adjustment_input(app, prayer))
+                .map(|prayer| adjustment_input(inputs, prayer))
                 .collect();
 
-            iced::widget::Row::with_children(inputs).spacing(12).into()
+            iced::widget::Row::with_children(elems).spacing(12).into()
         })
         .collect();
 

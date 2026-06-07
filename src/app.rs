@@ -10,6 +10,7 @@ pub enum Message {
     LongitudeChanged(String),
     TimezoneChanged(String),
     ElevationChanged(String),
+    ToggleDst,
     ToggleSettings,
     ToggleArabic,
     ToggleHijri,
@@ -108,10 +109,6 @@ impl App {
             .then(|| "Cannot compute times for this date/location.".into())
     }
 
-    pub fn adjustment_input(&self, prayer: Prayer) -> &str {
-        &self.inputs.adjustment_inputs[prayer.index()]
-    }
-
     pub fn set_adjustment_input(&mut self, prayer: Prayer, value: String) {
         self.inputs.adjustment_inputs[prayer.index()] = value;
     }
@@ -191,22 +188,15 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         Message::DetectLocation => {
             app.is_detecting = true;
 
-            let (tx, rx) = iced::futures::channel::oneshot::channel();
-
-            std::thread::spawn(move || {
-                let _ = tx.send(detect_location());
-            });
-
-            let future = async move {
-                match rx.await {
-                    Ok(result) => Message::LocationDetected(result),
-                    Err(_) => Message::LocationDetected(Err(DetectError::Internal(
-                        "Background thread panicked or was dropped".into(),
-                    ))),
-                }
-            };
-
-            return Task::perform(future, |msg| msg);
+            return Task::perform(
+                async {
+                    tokio::task::spawn_blocking(detect_location)
+                        .await
+                        .map_err(|e| DetectError::Internal(format!("Task failed: {e}")))
+                        .and_then(|res| res)
+                },
+                Message::LocationDetected,
+            );
         }
         Message::LocationDetected(Ok(data)) => {
             app.is_detecting = false;
@@ -219,6 +209,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.location.coordinates.latitude = data.lat;
             app.location.coordinates.longitude = data.lon;
             app.location.timezone_offset = data.offset;
+            app.location.dst = false;
             app.location.elevation = data.elevation;
             app.recalculate();
         }
@@ -226,12 +217,15 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.is_detecting = false;
             app.error = Some(e.to_string());
         }
+        Message::ToggleDst => {
+            app.location.dst = !app.location.dst;
+            app.recalculate();
+        }
         Message::ToggleSettings => {
             app.settings_open = !app.settings_open;
-            if app.settings_open {
-                app.reset_inputs();
-            } else {
+            if !app.settings_open {
                 app.adjustments_open = false;
+                app.reset_inputs();
             }
         }
         Message::ToggleArabic => app.show_arabic = !app.show_arabic,

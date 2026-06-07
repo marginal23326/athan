@@ -27,3 +27,4 @@ iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio"
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool"] }
+tokio = { version = "1", features = ["rt"] }

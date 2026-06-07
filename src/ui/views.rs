@@ -7,7 +7,7 @@ use iced::widget::{Space, button, column, container, row, rule, scrollable, spac
 use iced::{Alignment, Element, Fill, Font};
 
 pub fn main_view(app: &App) -> Element<'_, Message> {
-    let offset = time::UtcOffset::from_whole_seconds((app.location.timezone_offset * 3600.0) as i32)
+    let offset = time::UtcOffset::from_whole_seconds((app.location.effective_timezone_offset() * 3600.0) as i32)
         .unwrap_or(time::UtcOffset::UTC);
     let now_local = app.now.to_offset(offset);
 
@@ -92,7 +92,7 @@ fn hero_section(
             row![
                 column![
                     text("NEXT PRAYER").size(11).color(styles::TEXT_MUTED),
-                    text(prayer.name().to_uppercase()).size(30).color(styles::TEXT_PRIMARY),
+                    text(prayer.uppercase_name()).size(30).color(styles::TEXT_PRIMARY),
                     text(format_time(ptime)).size(15).color(styles::TEXT_MUTED),
                 ]
                 .spacing(2),

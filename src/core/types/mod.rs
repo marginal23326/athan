@@ -143,6 +143,17 @@ impl Prayer {
         }
     }
 
+    pub fn uppercase_name(&self) -> &'static str {
+        match self {
+            Self::Fajr => "FAJR",
+            Self::Sunrise => "SUNRISE",
+            Self::Dhuhr => "DHUHR",
+            Self::Asr => "ASR",
+            Self::Maghrib => "MAGHRIB",
+            Self::Isha => "ISHA",
+        }
+    }
+
     pub fn arabic_name(&self) -> &'static str {
         match self {
             Self::Fajr => "الفجر",
@@ -210,6 +221,7 @@ pub struct Location {
     pub name: String,
     pub coordinates: Coordinates,
     pub timezone_offset: f64,
+    pub dst: bool,
     pub elevation: f64,
 }
 
@@ -219,15 +231,21 @@ impl Default for Location {
             name: "Makkah".into(),
             coordinates: Coordinates::new(21.422_487, 39.826_206),
             timezone_offset: 3.0,
+            dst: false,
             elevation: 0.0,
         }
     }
 }
 
 impl Location {
+    pub fn effective_timezone_offset(&self) -> f64 {
+        self.timezone_offset + if self.dst { 1.0 } else { 0.0 }
+    }
+
     pub fn local_date(&self, now: time::OffsetDateTime) -> time::Date {
-        if self.timezone_offset.is_finite() && (-24.0..=24.0).contains(&self.timezone_offset) {
-            let seconds = (self.timezone_offset * 3600.0).round() as i64;
+        let offset = self.effective_timezone_offset();
+        if offset.is_finite() && (-24.0..=24.0).contains(&offset) {
+            let seconds = (offset * 3600.0).round() as i64;
             (now + time::Duration::seconds(seconds)).date()
         } else {
             now.date()

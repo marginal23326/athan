@@ -28,13 +28,14 @@ pub fn calculate_daily_prayer_data(
     adjustments: PrayerAdjustments,
 ) -> DailyPrayerData {
     let date = location.local_date(now);
+    let effective_offset = location.effective_timezone_offset();
 
     DailyPrayerData {
         date,
         prayer_times: calculate_prayer_times(
             date,
             location.coordinates,
-            location.timezone_offset,
+            effective_offset,
             location.elevation,
             method,
             asr_method,

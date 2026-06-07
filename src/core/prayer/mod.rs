@@ -4,6 +4,7 @@ mod spa;
 use spa::{SpaFunction, SpaInputs, spa_calculate};
 
 const HIGH_LAT_THRESHOLD: f64 = 48.5; // degrees
+const ASR_FALLBACK_HOURS: f64 = 3.5; // mid-afternoon fallback for extreme high-latitude Asr
 
 fn cos_hour_angle_rad(alt_rad: f64, lat_rad: f64, decl_rad: f64) -> f64 {
     let (sin_lat, cos_lat) = lat_rad.sin_cos();
@@ -125,7 +126,7 @@ fn calculate_asr(lat: f64, topo_decl: f64, transit: f64, asr_method: AsrMethod) 
     let ha_asr = if cos_ha_asr.abs() <= 1.0 {
         get_ha_or_fallback(cos_ha_asr)
     } else {
-        3.5 // Fallback if Asr never occurs
+        ASR_FALLBACK_HOURS
     };
     transit + ha_asr
 }

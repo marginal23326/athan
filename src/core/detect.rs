@@ -28,6 +28,7 @@ impl From<LocationData> for Location {
             name: data.name,
             coordinates: Coordinates::new(data.lat, data.lon),
             timezone_offset: data.offset,
+            dst: false,
             elevation: data.elevation,
         }
     }
