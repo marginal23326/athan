@@ -1,4 +1,5 @@
 mod app;
+mod config;
 mod tray;
 mod ui;
 
@@ -122,6 +123,10 @@ fn theme(_app: &App, _id: iced::window::Id) -> iced::Theme {
 
 fn new() -> (App, Task<Message>) {
     let mut app = App::default();
+
+    if let Some(cfg) = config::load() {
+        app.apply_config(cfg);
+    }
 
     if let Some((tray, tray_rx)) = tray::spawn("Athan") {
         app.tray = Some(tray);

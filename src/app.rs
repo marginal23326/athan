@@ -147,6 +147,36 @@ impl App {
         self.inputs.loc_name_input = self.location.name.clone();
         self.inputs.adjustment_inputs = Prayer::ALL.map(|prayer| self.prayer_adjustments.get(prayer).to_string());
     }
+
+    pub fn apply_config(&mut self, config: crate::config::Config) {
+        self.location = config.location;
+        self.calculation_method = config.calculation_method;
+        self.asr_method = config.asr_method;
+        self.prayer_adjustments = config.prayer_adjustments;
+        self.show_arabic = config.show_arabic;
+        #[cfg(feature = "hijri")]
+        {
+            self.show_hijri = config.show_hijri;
+        }
+        self.recalculate();
+        self.reset_inputs();
+    }
+
+    pub fn to_config(&self) -> crate::config::Config {
+        crate::config::Config {
+            location: self.location.clone(),
+            calculation_method: self.calculation_method,
+            asr_method: self.asr_method,
+            prayer_adjustments: self.prayer_adjustments,
+            show_arabic: self.show_arabic,
+            #[cfg(feature = "hijri")]
+            show_hijri: self.show_hijri,
+        }
+    }
+
+    pub fn save_config(&self) {
+        crate::config::save(&self.to_config());
+    }
 }
 
 pub fn update(app: &mut App, msg: Message) -> Task<Message> {
@@ -194,10 +224,12 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         Message::MethodChanged(m) => {
             app.calculation_method = m;
             app.recalculate();
+            app.save_config();
         }
         Message::AsrMethodChanged(m) => {
             app.asr_method = m;
             app.recalculate();
+            app.save_config();
         }
         Message::LatitudeChanged(s) => {
             app.inputs.lat_input = s.clone();
@@ -269,6 +301,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.location.dst = false;
             app.location.elevation = data.elevation;
             app.recalculate();
+            app.save_config();
         }
         #[cfg(feature = "detect")]
         Message::LocationDetected(Err(e)) => {
@@ -278,26 +311,41 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         Message::ToggleDst => {
             app.location.dst = !app.location.dst;
             app.recalculate();
+            app.save_config();
         }
         Message::ToggleSettings => {
             app.settings_open = !app.settings_open;
             if !app.settings_open {
                 app.adjustments_open = false;
                 app.reset_inputs();
+                app.save_config();
             }
         }
-        Message::ToggleArabic => app.show_arabic = !app.show_arabic,
+        Message::ToggleArabic => {
+            app.show_arabic = !app.show_arabic;
+            app.save_config();
+        }
         #[cfg(feature = "hijri")]
-        Message::ToggleHijri => app.show_hijri = !app.show_hijri,
-        Message::ToggleAdjustments => app.adjustments_open = !app.adjustments_open,
+        Message::ToggleHijri => {
+            app.show_hijri = !app.show_hijri;
+            app.save_config();
+        }
+        Message::ToggleAdjustments => {
+            app.adjustments_open = !app.adjustments_open;
+            if !app.adjustments_open {
+                app.save_config();
+            }
+        }
         Message::FocusNext => return iced::widget::operation::focus_next(),
         Message::FocusPrevious => return iced::widget::operation::focus_previous(),
         Message::EscapePressed => {
             if app.adjustments_open {
                 app.adjustments_open = false;
+                app.save_config();
             } else if app.settings_open {
                 app.settings_open = false;
                 app.reset_inputs();
+                app.save_config();
             }
         }
     }

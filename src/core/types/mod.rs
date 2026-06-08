@@ -1,6 +1,7 @@
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub enum CalculationMethod {
     Mwl,
     Egypt,
@@ -44,7 +45,8 @@ impl CalculationMethod {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
 pub enum AsrMethod {
     Shafi,
     Hanafi,
@@ -170,7 +172,7 @@ impl Prayer {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct PrayerAdjustments {
     minutes: [i32; Prayer::COUNT],
 }
@@ -197,7 +199,7 @@ impl PrayerAdjustments {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Coordinates {
     pub latitude: f64,
     pub longitude: f64,
@@ -216,7 +218,7 @@ impl Coordinates {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Location {
     pub name: String,
     pub coordinates: Coordinates,

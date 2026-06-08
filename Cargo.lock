@@ -152,11 +152,13 @@ name = "athan"
 version = "0.1.0"
 dependencies = [
  "argp",
+ "directories",
  "iced",
  "icu_calendar",
  "ksni",
  "minreq",
  "serde",
+ "serde_json",
  "thiserror 2.0.18",
  "time",
  "tokio",
@@ -613,6 +615,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 dependencies = [
  "powerfmt",
+]
+
+[[package]]
+name = "directories"
+version = "6.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16f5094c54661b38d03bd7e50df373292118db60b585c08a411c6d840017fe7d"
+dependencies = [
+ "dirs-sys",
 ]
 
 [[package]]
