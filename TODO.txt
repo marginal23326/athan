@@ -1,2 +1,0 @@
-- run in the background, accessible from tray icon
-- athan audio when athan times come

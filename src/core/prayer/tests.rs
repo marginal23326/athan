@@ -127,7 +127,7 @@ fn fajr_angle_sunrise_check() {
     let spa_inputs = SpaInputs::new(
         date.year(),
         date.month() as u8 as i32,
-        date.day() as u8 as i32,
+        date.day() as i32,
         coords.latitude,
         coords.longitude,
     )
@@ -385,7 +385,7 @@ fn api_verification_all_locations() {
             coords: Coordinates::new(23.757283, 90.369712),
             tz: 6.0,
             method: CalculationMethod::UmmAlQura,
-            expected: [(3, 45), (5, 13), (11, 55), (15, 16), (18, 38), (20, 08)],
+            expected: [(3, 45), (5, 13), (11, 55), (15, 16), (18, 38), (20, 8)],
             tolerance_minutes: 2,
         },
         // London: ISNA/Shafi
@@ -405,7 +405,7 @@ fn api_verification_all_locations() {
             coords: Coordinates::new(40.7128, -74.0060),
             tz: -4.0,
             method: CalculationMethod::Egypt,
-            expected: [(3, 21), (5, 32), (12, 53), (16, 50), (20, 15), (22, 08)],
+            expected: [(3, 21), (5, 32), (12, 53), (16, 50), (20, 15), (22, 8)],
             tolerance_minutes: 2,
         },
         // Makkah: UmmAlQura/Shafi
@@ -455,11 +455,11 @@ fn london_high_lat_winter_vs_aladhan() {
         let (fh, fm) = hm(&times.fajr);
         let (ih, im) = hm(&times.isha);
         assert!(
-            ((fh as i32 * 60 + fm as i32) - (efh as i32 * 60 + efm as i32)).abs() <= 5,
+            ((fh as i32 * 60 + fm as i32) - (efh * 60 + efm)).abs() <= 5,
             "Fajr: got {fh:02}:{fm:02}, expected {efh:02}:{efm:02}"
         );
         assert!(
-            ((ih as i32 * 60 + im as i32) - (eih as i32 * 60 + eim as i32)).abs() <= 5,
+            ((ih as i32 * 60 + im as i32) - (eih * 60 + eim)).abs() <= 5,
             "Isha: got {ih:02}:{im:02}, expected {eih:02}:{eim:02}"
         );
     }

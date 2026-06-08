@@ -31,6 +31,9 @@ pub enum Message {
     HideToTray(iced::window::Id),
     WindowClosed(iced::window::Id),
     TrayEvent(crate::tray::TrayEvent),
+    PlayAdhan(Option<Prayer>),
+    StopAdhan,
+    VolumeChanged(f32),
 }
 
 pub struct SettingsState {
@@ -64,6 +67,9 @@ pub struct App {
     pub tray: Option<crate::tray::TrayHandle>,
     pub tray_rx: Option<Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>,
     pub start_on_boot: bool,
+    pub volume: f32,
+    pub last_prayer_announced: Option<(time::Date, Prayer)>,
+    pub audio: Option<crate::audio::AudioPlayer>,
 }
 
 impl Default for App {
@@ -105,6 +111,9 @@ impl Default for App {
             tray: None,
             tray_rx: None,
             start_on_boot: crate::config::is_autostart(),
+            volume: crate::config::default_volume(),
+            last_prayer_announced: None,
+            audio: crate::audio::AudioPlayer::new(),
         }
     }
 }
@@ -157,6 +166,10 @@ impl App {
         self.asr_method = config.asr_method;
         self.prayer_adjustments = config.prayer_adjustments;
         self.show_arabic = config.show_arabic;
+        self.volume = config.volume;
+        if let Some(audio) = &self.audio {
+            audio.set_volume(self.volume);
+        }
         #[cfg(feature = "hijri")]
         {
             self.show_hijri = config.show_hijri;
@@ -172,6 +185,7 @@ impl App {
             asr_method: self.asr_method,
             prayer_adjustments: self.prayer_adjustments,
             show_arabic: self.show_arabic,
+            volume: self.volume,
             #[cfg(feature = "hijri")]
             show_hijri: self.show_hijri,
         }
@@ -185,20 +199,70 @@ impl App {
 pub fn update(app: &mut App, msg: Message) -> Task<Message> {
     match msg {
         Message::Tick(now) => {
-            let old = app.location.local_date(app.now);
+            let old_date = app.location.local_date(app.now);
             app.now = now;
+            let current_date = app.location.local_date(app.now);
 
-            if app.location.local_date(app.now) != old {
+            if current_date != old_date {
                 app.recalculate();
             }
 
-            if let (Some(tray), Some(times)) = (&app.tray, &app.prayer_times) {
+            let mut out_task = Task::none();
+
+            if let Some(times) = &app.prayer_times {
                 let offset =
                     time::UtcOffset::from_whole_seconds((app.location.effective_timezone_offset() * 3600.0) as i32)
                         .unwrap_or(time::UtcOffset::UTC);
-                let tooltip = format_tray_tooltip(times, app.now, offset);
-                tray.update_tooltip(&tooltip);
+                let now_local = app.now.to_offset(offset);
+
+                let mut latest_passed = None;
+                for &(prayer, ptime) in &times.as_array() {
+                    if ptime <= now_local.time() {
+                        latest_passed = Some(prayer);
+                    }
+                }
+
+                if let Some(prayer) = latest_passed {
+                    let key = (current_date, prayer);
+                    if app.last_prayer_announced.is_none() {
+                        app.last_prayer_announced = Some(key);
+                    } else if app.last_prayer_announced != Some(key) {
+                        app.last_prayer_announced = Some(key);
+                        out_task = Task::done(Message::PlayAdhan(Some(prayer)));
+                    }
+                }
+
+                if let Some(tray) = &app.tray {
+                    let tooltip = format_tray_tooltip(times, app.now, offset);
+                    let playing = app.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
+                    tray.update(&tooltip, playing);
+                }
             }
+            return out_task;
+        }
+        Message::PlayAdhan(prayer) => {
+            if let Some(audio) = &app.audio {
+                let mut path = crate::audio::default_adhan_path();
+                if prayer == Some(Prayer::Fajr) {
+                    let fajr_path = crate::audio::audio_dir().join("fajr.ogg");
+                    if fajr_path.exists() {
+                        path = fajr_path;
+                    }
+                }
+                audio.play(path);
+            }
+        }
+        Message::StopAdhan => {
+            if let Some(audio) = &app.audio {
+                audio.stop();
+            }
+        }
+        Message::VolumeChanged(v) => {
+            app.volume = v;
+            if let Some(audio) = &app.audio {
+                audio.set_volume(v);
+            }
+            app.save_config();
         }
         Message::HideToTray(id) => {
             if app.window_id == Some(id) {
@@ -223,6 +287,11 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         }
         Message::TrayEvent(crate::tray::TrayEvent::Exit) => {
             return iced::exit();
+        }
+        Message::TrayEvent(crate::tray::TrayEvent::StopAdhan) => {
+            if let Some(audio) = &app.audio {
+                audio.stop();
+            }
         }
         Message::MethodChanged(m) => {
             app.calculation_method = m;
@@ -356,6 +425,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
     }
+
     Task::none()
 }
 

@@ -111,6 +111,19 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
     ]
     .spacing(8);
 
+    let audio_group = column![
+        text("Audio").size(13).color(styles::TEXT_PRIMARY),
+        row![
+            text("Adhan Volume").size(13).color(styles::TEXT_MUTED),
+            Space::new().width(Fill),
+            text(format!("{}%", (app.volume * 100.0).round() as i32))
+                .size(13)
+                .color(styles::TEXT_MUTED),
+        ],
+        iced::widget::slider(0.0..=1.0, app.volume, Message::VolumeChanged).step(0.01_f32)
+    ]
+    .spacing(8);
+
     #[allow(unused_mut)]
     let mut interface_items: Vec<Element<Message>> = vec![
         text("Interface Options").size(13).color(styles::TEXT_PRIMARY).into(),
@@ -155,8 +168,15 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
         iced::widget::Column::with_children(items).spacing(12)
     };
 
-    let mut inner_content =
-        column![header, location_section, calc_group, adjustment_group, interface_group].spacing(20);
+    let mut inner_content = column![
+        header,
+        location_section,
+        calc_group,
+        adjustment_group,
+        audio_group,
+        interface_group
+    ]
+    .spacing(20);
 
     if let Some(err) = &app.error {
         inner_content = inner_content.push(text(err).size(13).color(styles::ERROR));

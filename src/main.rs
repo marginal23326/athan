@@ -1,4 +1,5 @@
 mod app;
+mod audio;
 mod config;
 mod tray;
 mod ui;
@@ -124,6 +125,8 @@ fn theme(_app: &App, _id: iced::window::Id) -> iced::Theme {
 fn new() -> (App, Task<Message>) {
     let mut app = App::default();
     let minimized = std::env::args().any(|a| a == "--minimized");
+
+    crate::audio::ensure_audio_files();
 
     if let Some(cfg) = config::load() {
         app.apply_config(cfg);

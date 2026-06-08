@@ -4,13 +4,16 @@ use tokio::sync::mpsc as tokio_mpsc;
 pub enum TrayEvent {
     Clicked,
     Exit,
+    StopAdhan,
 }
 
 pub struct TrayHandle {
     #[cfg(target_os = "linux")]
-    update_tx: tokio_mpsc::UnboundedSender<String>,
+    update_tx: tokio_mpsc::UnboundedSender<(String, bool)>,
     #[cfg(target_os = "windows")]
     tray_icon: tray_icon::TrayIcon,
+    #[cfg(target_os = "windows")]
+    stop_item: tray_icon::menu::MenuItem,
 }
 
 #[cfg(target_os = "linux")]
@@ -110,6 +113,7 @@ pub fn generate_icon(size: u32) -> Vec<u8> {
 #[cfg(target_os = "linux")]
 struct AthanTray {
     tooltip: String,
+    playing: bool,
     icon: Vec<ksni::Icon>,
     tx: tokio_mpsc::UnboundedSender<TrayEvent>,
 }
@@ -137,7 +141,7 @@ impl ksni::Tray for AthanTray {
     }
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
         use ksni::menu::*;
-        vec![
+        let mut items = vec![
             StandardItem {
                 label: "Open".into(),
                 activate: Box::new(|this: &mut AthanTray| {
@@ -147,6 +151,23 @@ impl ksni::Tray for AthanTray {
             }
             .into(),
             MenuItem::Separator,
+        ];
+
+        if self.playing {
+            items.push(
+                StandardItem {
+                    label: "Stop Adhan".into(),
+                    activate: Box::new(|this: &mut AthanTray| {
+                        let _ = this.tx.send(TrayEvent::StopAdhan);
+                    }),
+                    ..Default::default()
+                }
+                .into(),
+            );
+            items.push(MenuItem::Separator);
+        }
+
+        items.push(
             StandardItem {
                 label: "Exit".into(),
                 activate: Box::new(|this: &mut AthanTray| {
@@ -155,7 +176,9 @@ impl ksni::Tray for AthanTray {
                 ..Default::default()
             }
             .into(),
-        ]
+        );
+
+        items
     }
 }
 
@@ -164,7 +187,7 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
 
     #[cfg(target_os = "linux")]
     {
-        let (update_tx, mut update_rx) = tokio_mpsc::unbounded_channel::<String>();
+        let (update_tx, mut update_rx) = tokio_mpsc::unbounded_channel::<(String, bool)>();
         let tooltip = initial_tooltip.to_string();
 
         std::thread::spawn(move || {
@@ -173,12 +196,18 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
                     use ksni::TrayMethods;
                     let tray = AthanTray {
                         tooltip,
+                        playing: false,
                         icon: vec![make_icon()],
                         tx,
                     };
                     if let Ok(handle) = tray.spawn().await {
-                        while let Some(new_tooltip) = update_rx.recv().await {
-                            let _ = handle.update(|tray: &mut AthanTray| tray.tooltip = new_tooltip).await;
+                        while let Some((new_tooltip, playing)) = update_rx.recv().await {
+                            let _ = handle
+                                .update(|tray: &mut AthanTray| {
+                                    tray.tooltip = new_tooltip;
+                                    tray.playing = playing;
+                                })
+                                .await;
                         }
                     }
                 });
@@ -191,12 +220,16 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
     #[cfg(target_os = "windows")]
     {
         use tray_icon::TrayIconBuilder;
-        use tray_icon::menu::{Menu, MenuItem};
+        use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
 
         let menu = Menu::new();
         let open_item = MenuItem::new("Open", true, None);
+        let stop_item = MenuItem::new("Stop Adhan", false, None);
         let exit_item = MenuItem::new("Exit", true, None);
         let _ = menu.append(&open_item);
+        let _ = menu.append(&PredefinedMenuItem::separator());
+        let _ = menu.append(&stop_item);
+        let _ = menu.append(&PredefinedMenuItem::separator());
         let _ = menu.append(&exit_item);
 
         let size = 32;
@@ -211,6 +244,7 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
             .ok()?;
 
         let open_id = open_item.id().clone();
+        let stop_id = stop_item.id().clone();
         let exit_id = exit_item.id().clone();
 
         let tx_click = tx.clone();
@@ -229,12 +263,14 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
         tray_icon::menu::MenuEvent::set_event_handler(Some(move |event: tray_icon::menu::MenuEvent| {
             if event.id == open_id {
                 let _ = tx_menu.send(TrayEvent::Clicked);
+            } else if event.id == stop_id {
+                let _ = tx_menu.send(TrayEvent::StopAdhan);
             } else if event.id == exit_id {
                 let _ = tx_menu.send(TrayEvent::Exit);
             }
         }));
 
-        return Some((TrayHandle { tray_icon }, rx));
+        return Some((TrayHandle { tray_icon, stop_item }, rx));
     }
 
     #[allow(unreachable_code)]
@@ -242,18 +278,20 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
 }
 
 impl TrayHandle {
-    pub fn update_tooltip(&self, text: &str) {
+    pub fn update(&self, text: &str, playing: bool) {
         #[cfg(target_os = "linux")]
         {
-            let _ = self.update_tx.send(text.to_string());
+            let _ = self.update_tx.send((text.to_string(), playing));
         }
         #[cfg(target_os = "windows")]
         {
             let _ = self.tray_icon.set_tooltip(Some(text));
+            self.stop_item.set_enabled(playing);
         }
         #[cfg(not(any(target_os = "linux", target_os = "windows")))]
         {
             let _ = text;
+            let _ = playing;
         }
     }
 }

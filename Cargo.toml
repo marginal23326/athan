@@ -30,6 +30,7 @@ directories = "6"
 argp = { version = "0.4", optional = true }
 tokio = { version = "1", features = ["rt", "sync"] }
 minreq = { version = "2", features = ["json-using-serde"], optional = true }
+rodio = { version = "0.22", default-features = false, features = ["playback", "vorbis"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool", "wayland"] }

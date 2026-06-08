@@ -8,8 +8,14 @@ pub struct Config {
     pub asr_method: AsrMethod,
     pub prayer_adjustments: PrayerAdjustments,
     pub show_arabic: bool,
+    #[serde(default = "default_volume")]
+    pub volume: f32,
     #[cfg(feature = "hijri")]
     pub show_hijri: bool,
+}
+
+pub fn default_volume() -> f32 {
+    0.5
 }
 
 fn config_path() -> Option<std::path::PathBuf> {

@@ -42,6 +42,8 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
         text(now_local.format(DATE_FMT).unwrap_or_default())
             .size(12)
             .color(styles::TEXT_MUTED),
+        text(" "),
+        text(format_time(now_local.time())).size(12).color(styles::TEXT_MUTED),
     ]
     .align_y(Alignment::Center);
 
@@ -101,6 +103,20 @@ fn hero_section(
     now_local: time::OffsetDateTime,
     next_p: Option<(Prayer, time::Time)>,
 ) -> Element<'_, Message> {
+    let is_playing = app.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
+
+    let play_btn = if is_playing {
+        button(text("Stop").size(12))
+            .on_press(Message::StopAdhan)
+            .style(styles::button)
+            .padding([4, 10])
+    } else {
+        button(text("Play Adhan").size(12))
+            .on_press(Message::PlayAdhan(None))
+            .style(styles::button)
+            .padding([4, 10])
+    };
+
     let content = if app.prayer_times.is_some() {
         if let Some((prayer, ptime)) = next_p {
             let secs = time_until(ptime, now_local.time()).whole_seconds().max(0);
@@ -109,6 +125,8 @@ fn hero_section(
                     text("NEXT PRAYER").size(11).color(styles::TEXT_MUTED),
                     text(prayer.uppercase_name()).size(30).color(styles::TEXT_PRIMARY),
                     text(format_time(ptime)).size(15).color(styles::TEXT_MUTED),
+                    Space::new().height(8),
+                    play_btn,
                 ]
                 .spacing(2),
                 Space::new().width(Fill),
