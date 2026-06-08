@@ -123,6 +123,7 @@ fn theme(_app: &App, _id: iced::window::Id) -> iced::Theme {
 
 fn new() -> (App, Task<Message>) {
     let mut app = App::default();
+    let minimized = std::env::args().any(|a| a == "--minimized");
 
     if let Some(cfg) = config::load() {
         app.apply_config(cfg);
@@ -133,15 +134,20 @@ fn new() -> (App, Task<Message>) {
         app.tray_rx = Some(Arc::new(Mutex::new(tray_rx)));
     }
 
-    let (id, task) = iced::window::open(app::App::main_window_settings());
-    app.window_id = Some(id);
-
-    (app, task.map(|_| Message::Tick(time::OffsetDateTime::now_utc())))
+    if minimized {
+        (app, Task::done(Message::Tick(time::OffsetDateTime::now_utc())))
+    } else {
+        let (id, task) = iced::window::open(app::App::main_window_settings());
+        app.window_id = Some(id);
+        (app, task.map(|_| Message::Tick(time::OffsetDateTime::now_utc())))
+    }
 }
 
 fn main() {
+    let _minimized = std::env::args().any(|a| a == "--minimized");
+
     #[cfg(feature = "cli")]
-    if std::env::args().len() > 1 {
+    if !_minimized && std::env::args().len() > 1 {
         if let Err(e) = athan::cli::run() {
             eprintln!("Error: {e}");
             std::process::exit(1);

@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick(time::OffsetDateTime),
+    ToggleStartOnBoot,
     MethodChanged(CalculationMethod),
     AsrMethodChanged(AsrMethod),
     LatitudeChanged(String),
@@ -62,6 +63,7 @@ pub struct App {
     pub window_id: Option<iced::window::Id>,
     pub tray: Option<crate::tray::TrayHandle>,
     pub tray_rx: Option<Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>,
+    pub start_on_boot: bool,
 }
 
 impl Default for App {
@@ -102,6 +104,7 @@ impl Default for App {
             window_id: None,
             tray: None,
             tray_rx: None,
+            start_on_boot: crate::config::is_autostart(),
         }
     }
 }
@@ -320,6 +323,10 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 app.reset_inputs();
                 app.save_config();
             }
+        }
+        Message::ToggleStartOnBoot => {
+            app.start_on_boot = !app.start_on_boot;
+            crate::config::set_autostart(app.start_on_boot);
         }
         Message::ToggleArabic => {
             app.show_arabic = !app.show_arabic;

@@ -37,6 +37,7 @@ ksni = { version = "0.3", features = ["tokio"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
 tray-icon = "0.24"
+winreg = "0.56"
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool"] }
