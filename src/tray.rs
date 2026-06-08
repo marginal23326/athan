@@ -14,8 +14,103 @@ pub struct TrayHandle {
 }
 
 #[cfg(target_os = "linux")]
+fn make_icon() -> ksni::Icon {
+    let size = 64;
+    let rgba = generate_icon(size);
+    let mut argb = Vec::with_capacity(rgba.len());
+    for chunk in rgba.chunks_exact(4) {
+        argb.push(chunk[3]); // Alpha
+        argb.push(chunk[0]); // Red
+        argb.push(chunk[1]); // Green
+        argb.push(chunk[2]); // Blue
+    }
+    ksni::Icon {
+        width: size as i32,
+        height: size as i32,
+        data: argb,
+    }
+}
+
+pub fn generate_icon(size: u32) -> Vec<u8> {
+    let mut rgba = Vec::with_capacity((size * size * 4) as usize);
+    let scale = 1.2_f64;
+    let px_size = 2.0 / (size as f64) / scale;
+
+    // Charcoal: #18181b
+    let charcoal_r = 24.0;
+    let charcoal_g = 24.0;
+    let charcoal_b = 27.0;
+
+    // Gold: #eab308
+    let gold_r = 234.0;
+    let gold_g = 179.0;
+    let gold_b = 8.0;
+
+    // Rounded box geometry
+    let box_w = 0.65;
+    let box_h = 0.65;
+    let r = 0.16;
+
+    let c1 = -0.22;
+    let h1 = 0.075;
+    let c2 = -0.01;
+    let h2 = 0.025;
+
+    for y in 0..size {
+        for x in 0..size {
+            let u = (((x as f64) + 0.5) / (size as f64) * 2.0 - 1.0) / scale;
+            let v = (((y as f64) + 0.5) / (size as f64) * 2.0 - 1.0) / scale;
+
+            let dx = u.abs() - (box_w - r);
+            let dy = v.abs() - (box_h - r);
+
+            let mx = dx.max(0.0);
+            let my = dy.max(0.0);
+            let length = mx.hypot(my);
+            let inside_dist = dx.max(dy).min(0.0);
+            let d_box = length + inside_dist - r;
+
+            let alpha = if d_box < -px_size {
+                1.0
+            } else if d_box > px_size {
+                0.0
+            } else {
+                0.5 - 0.5 * (d_box / px_size)
+            };
+
+            if alpha > 0.0 {
+                let d_band1 = (v - c1).abs() - h1;
+                let d_band2 = (v - c2).abs() - h2;
+                let d_gold = d_band1.min(d_band2);
+
+                let gold_factor = if d_gold < -px_size {
+                    1.0
+                } else if d_gold > px_size {
+                    0.0
+                } else {
+                    0.5 - 0.5 * (d_gold / px_size)
+                };
+
+                let blended_r = charcoal_r * (1.0 - gold_factor) + gold_r * gold_factor;
+                let blended_g = charcoal_g * (1.0 - gold_factor) + gold_g * gold_factor;
+                let blended_b = charcoal_b * (1.0 - gold_factor) + gold_b * gold_factor;
+
+                rgba.push(blended_r.round() as u8);
+                rgba.push(blended_g.round() as u8);
+                rgba.push(blended_b.round() as u8);
+                rgba.push((alpha * 255.0).round() as u8);
+            } else {
+                rgba.extend_from_slice(&[0, 0, 0, 0]);
+            }
+        }
+    }
+    rgba
+}
+
+#[cfg(target_os = "linux")]
 struct AthanTray {
     tooltip: String,
+    icon: Vec<ksni::Icon>,
     tx: tokio_mpsc::UnboundedSender<TrayEvent>,
 }
 
@@ -23,9 +118,6 @@ struct AthanTray {
 impl ksni::Tray for AthanTray {
     fn id(&self) -> String {
         env!("CARGO_PKG_NAME").into()
-    }
-    fn icon_name(&self) -> String {
-        "dialog-information".into()
     }
     fn title(&self) -> String {
         "Athan".into()
@@ -36,6 +128,9 @@ impl ksni::Tray for AthanTray {
             description: self.tooltip.clone(),
             ..Default::default()
         }
+    }
+    fn icon_pixmap(&self) -> Vec<ksni::Icon> {
+        self.icon.clone()
     }
     fn activate(&mut self, _x: i32, _y: i32) {
         let _ = self.tx.send(TrayEvent::Clicked);
@@ -76,7 +171,11 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
             if let Ok(rt) = tokio::runtime::Builder::new_current_thread().enable_all().build() {
                 rt.block_on(async move {
                     use ksni::TrayMethods;
-                    let tray = AthanTray { tooltip, tx };
+                    let tray = AthanTray {
+                        tooltip,
+                        icon: vec![make_icon()],
+                        tx,
+                    };
                     if let Ok(handle) = tray.spawn().await {
                         while let Some(new_tooltip) = update_rx.recv().await {
                             let _ = handle.update(|tray: &mut AthanTray| tray.tooltip = new_tooltip).await;
@@ -100,13 +199,9 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
         let _ = menu.append(&open_item);
         let _ = menu.append(&exit_item);
 
-        let width = 32;
-        let height = 32;
-        let mut rgba = Vec::with_capacity((width * height * 4) as usize);
-        for _ in 0..(width * height) {
-            rgba.extend_from_slice(&[0, 128, 255, 255]);
-        }
-        let icon = tray_icon::Icon::from_rgba(rgba, width, height).ok()?;
+        let size = 32;
+        let rgba = generate_icon(size);
+        let icon = tray_icon::Icon::from_rgba(rgba, size, size).ok()?;
 
         let tray_icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
