@@ -1,5 +1,7 @@
 use athan::core::*;
 use iced::Task;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -25,6 +27,9 @@ pub enum Message {
     DetectLocation,
     #[cfg(feature = "detect")]
     LocationDetected(Result<LocationData, DetectError>),
+    HideToTray(iced::window::Id),
+    WindowClosed(iced::window::Id),
+    TrayEvent(crate::tray::TrayEvent),
 }
 
 pub struct SettingsState {
@@ -54,6 +59,9 @@ pub struct App {
     pub is_detecting: bool,
     pub inputs: SettingsState,
     pub error: Option<String>,
+    pub window_id: Option<iced::window::Id>,
+    pub tray: Option<crate::tray::TrayHandle>,
+    pub tray_rx: Option<Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>,
 }
 
 impl Default for App {
@@ -91,6 +99,9 @@ impl Default for App {
                 adjustment_inputs: Prayer::ALL.map(|prayer| adjustments.get(prayer).to_string()),
             },
             error: err,
+            window_id: None,
+            tray: None,
+            tray_rx: None,
         }
     }
 }
@@ -120,6 +131,14 @@ impl App {
         self.inputs.adjustment_inputs[prayer.index()] = value;
     }
 
+    pub fn main_window_settings() -> iced::window::Settings {
+        iced::window::Settings {
+            size: iced::Size::new(450.0, 640.0),
+            position: iced::window::Position::Centered,
+            ..Default::default()
+        }
+    }
+
     fn reset_inputs(&mut self) {
         self.inputs.lat_input = self.location.coordinates.latitude.to_string();
         self.inputs.lon_input = self.location.coordinates.longitude.to_string();
@@ -130,18 +149,47 @@ impl App {
     }
 }
 
-pub fn new() -> App {
-    App::default()
-}
-
 pub fn update(app: &mut App, msg: Message) -> Task<Message> {
     match msg {
         Message::Tick(now) => {
             let old = app.location.local_date(app.now);
             app.now = now;
+
             if app.location.local_date(app.now) != old {
                 app.recalculate();
             }
+
+            if let (Some(tray), Some(times)) = (&app.tray, &app.prayer_times) {
+                let offset =
+                    time::UtcOffset::from_whole_seconds((app.location.effective_timezone_offset() * 3600.0) as i32)
+                        .unwrap_or(time::UtcOffset::UTC);
+                let tooltip = format_tray_tooltip(times, app.now, offset);
+                tray.update_tooltip(&tooltip);
+            }
+        }
+        Message::HideToTray(id) => {
+            if app.window_id == Some(id) {
+                app.window_id = None;
+                return iced::window::close(id);
+            }
+        }
+        Message::WindowClosed(id) => {
+            if app.window_id == Some(id) {
+                app.window_id = None;
+            }
+        }
+        Message::TrayEvent(crate::tray::TrayEvent::Clicked) => {
+            if app.window_id.is_none() {
+                let now = app.now;
+                let (id, task) = iced::window::open(App::main_window_settings());
+                app.window_id = Some(id);
+                return task.map(move |_| Message::Tick(now));
+            } else if let Some(id) = app.window_id {
+                return Task::batch(vec![iced::window::minimize(id, false), iced::window::gain_focus(id)]);
+            }
+        }
+        Message::TrayEvent(crate::tray::TrayEvent::Exit) => {
+            return iced::exit();
         }
         Message::MethodChanged(m) => {
             app.calculation_method = m;
@@ -254,4 +302,20 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         }
     }
     Task::none()
+}
+
+fn format_tray_tooltip(prayer_times: &PrayerTimes, now: time::OffsetDateTime, offset: time::UtcOffset) -> String {
+    let now_local = now.to_offset(offset);
+    let (prayer, ptime) = next_prayer(prayer_times, now_local.time());
+    let remaining = time_until(ptime, now_local.time());
+
+    let total_minutes = remaining.whole_minutes();
+    let hours = total_minutes / 60;
+    let mins = total_minutes % 60;
+
+    if hours > 0 {
+        format!("{} at {} — in {}h {}m", prayer.name(), format_time(ptime), hours, mins)
+    } else {
+        format!("{} at {} — in {}m", prayer.name(), format_time(ptime), mins)
+    }
 }

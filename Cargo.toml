@@ -26,11 +26,15 @@ time = { version = "0.3", features = ["formatting", "macros"] }
 icu_calendar = { version = "2", default-features = false, features = ["compiled_data"], optional = true }
 serde = { version = "1", features = ["derive"] }
 argp = { version = "0.4", optional = true }
-tokio = { version = "1", features = ["rt"] }
+tokio = { version = "1", features = ["rt", "sync"] }
 minreq = { version = "2", features = ["json-using-serde"], optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool", "wayland"] }
+ksni = { version = "0.3", features = ["tokio"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+tray-icon = "0.24"
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
 iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool"] }

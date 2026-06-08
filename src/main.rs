@@ -1,11 +1,35 @@
 mod app;
+mod tray;
 mod ui;
 
-use app::{App, Message, new, update};
+use app::{App, Message, update};
 use iced::widget::{center, mouse_area, opaque, stack};
-use iced::{Element, Subscription};
+use iced::{Element, Subscription, Task};
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-fn view(app: &App) -> Element<'_, Message> {
+#[derive(Clone)]
+struct TrayReceiver(Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>);
+
+impl std::hash::Hash for TrayReceiver {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        Arc::as_ptr(&self.0).hash(state);
+    }
+}
+
+impl PartialEq for TrayReceiver {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for TrayReceiver {}
+
+fn view(app: &App, id: iced::window::Id) -> Element<'_, Message> {
+    if app.window_id != Some(id) {
+        return iced::widget::text("").into();
+    }
+
     let base = ui::views::main_view(app);
 
     if app.settings_open {
@@ -42,13 +66,15 @@ fn view(app: &App) -> Element<'_, Message> {
     }
 }
 
-fn subscription(_app: &App) -> Subscription<Message> {
+fn subscription(app: &App) -> Subscription<Message> {
     let tick =
         iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::Tick(time::OffsetDateTime::now_utc()));
 
-    let keyboard_listen = iced::event::listen_with(|event, status, _id| {
-        if status == iced::event::Status::Ignored
-            && let iced::Event::Keyboard(iced::keyboard::Event::KeyPressed { key, modifiers, .. }) = event
+    let events = iced::event::listen_with(|event, status, id| match event {
+        iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::HideToTray(id)),
+        iced::Event::Window(iced::window::Event::Closed) => Some(Message::WindowClosed(id)),
+        iced::Event::Keyboard(iced::keyboard::Event::KeyPressed { key, modifiers, .. })
+            if status == iced::event::Status::Ignored =>
         {
             match key {
                 iced::keyboard::Key::Named(iced::keyboard::key::Named::Tab) => Some(if modifiers.shift() {
@@ -59,15 +85,28 @@ fn subscription(_app: &App) -> Subscription<Message> {
                 iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape) => Some(Message::EscapePressed),
                 _ => None,
             }
-        } else {
-            None
         }
+        _ => None,
     });
 
-    Subscription::batch(vec![tick, keyboard_listen])
+    let mut subs = vec![tick, events];
+
+    if let Some(rx_arc) = &app.tray_rx {
+        let tray_sub = iced::Subscription::run_with(TrayReceiver(rx_arc.clone()), |receiver| {
+            let rx = receiver.0.clone();
+            iced::futures::stream::unfold(rx, |rx| async move {
+                let mut lock = rx.lock().await;
+                let event = lock.recv().await?;
+                Some((Message::TrayEvent(event), rx.clone()))
+            })
+        });
+        subs.push(tray_sub);
+    }
+
+    Subscription::batch(subs)
 }
 
-fn theme(_app: &App) -> iced::Theme {
+fn theme(_app: &App, _id: iced::window::Id) -> iced::Theme {
     iced::Theme::custom(
         String::from("Athan"),
         iced::theme::Palette {
@@ -79,6 +118,20 @@ fn theme(_app: &App) -> iced::Theme {
             warning: ui::styles::ACCENT,
         },
     )
+}
+
+fn new() -> (App, Task<Message>) {
+    let mut app = App::default();
+
+    if let Some((tray, tray_rx)) = tray::spawn("Athan") {
+        app.tray = Some(tray);
+        app.tray_rx = Some(Arc::new(Mutex::new(tray_rx)));
+    }
+
+    let (id, task) = iced::window::open(app::App::main_window_settings());
+    app.window_id = Some(id);
+
+    (app, task.map(|_| Message::Tick(time::OffsetDateTime::now_utc())))
 }
 
 fn main() {
@@ -94,10 +147,8 @@ fn main() {
 }
 
 fn launch_gui() -> iced::Result {
-    iced::application(new, update, view)
+    iced::daemon(new, update, view)
         .subscription(subscription)
         .theme(theme)
-        .window_size(iced::Size::new(450.0, 640.0))
-        .centered()
         .run()
 }
