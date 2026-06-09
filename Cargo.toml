@@ -9,7 +9,7 @@ debug = 0
 strip = true
 
 [profile.release]
-lto = "thin"
+lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
@@ -33,7 +33,7 @@ minreq = { version = "2", features = ["json-using-serde"], optional = true }
 rodio = { version = "0.22", default-features = false, features = ["playback", "vorbis"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool", "wayland"] }
+iced = { version = "0.14", default-features = false, features = ["tiny-skia", "tokio", "thread-pool", "wayland"] }
 ksni = { version = "0.3", features = ["tokio"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
@@ -41,4 +41,4 @@ tray-icon = "0.24"
 winreg = "0.56"
 
 [target.'cfg(not(target_os = "linux"))'.dependencies]
-iced = { version = "0.14", default-features = false, features = ["wgpu", "tokio", "thread-pool"] }
+iced = { version = "0.14", default-features = false, features = ["tiny-skia", "tokio", "thread-pool"] }
