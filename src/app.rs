@@ -82,6 +82,7 @@ pub struct App {
     pub volume: f32,
     pub last_prayer_announced: Option<(time::Date, Prayer)>,
     pub audio: Option<crate::audio::AudioPlayer>,
+    pub last_tray_state: Option<(u8, bool)>,
 }
 
 impl Default for App {
@@ -127,6 +128,7 @@ impl Default for App {
             volume: 0.5,
             last_prayer_announced: None,
             audio: crate::audio::AudioPlayer::new(),
+            last_tray_state: None,
         }
     }
 }
@@ -248,9 +250,15 @@ impl App {
             }
 
             if let Some(tray) = &self.tray {
-                let tooltip = format_tray_tooltip(times, self.now, offset, self.use_24h);
                 let playing = self.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
-                tray.update(&tooltip, playing);
+                let current_minute = now_local.time().minute();
+
+                let new_state = (current_minute, playing);
+                if self.last_tray_state != Some(new_state) {
+                    let tooltip = format_tray_tooltip(times, self.now, offset, self.use_24h);
+                    tray.update(&tooltip, playing);
+                    self.last_tray_state = Some(new_state);
+                }
             }
         }
 
@@ -330,29 +338,37 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         Message::LatitudeChanged(s) => {
             app.inputs.lat_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                app.location.coordinates.latitude = v;
-                app.recalculate();
+                if (-90.0..=90.0).contains(&v) {
+                    app.location.coordinates.latitude = v;
+                    app.recalculate();
+                }
             }
         }
         Message::LongitudeChanged(s) => {
             app.inputs.lon_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                app.location.coordinates.longitude = v;
-                app.recalculate();
+                if (-180.0..=180.0).contains(&v) {
+                    app.location.coordinates.longitude = v;
+                    app.recalculate();
+                }
             }
         }
         Message::TimezoneChanged(s) => {
             app.inputs.tz_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                app.location.timezone_offset = v;
-                app.recalculate();
+                if (-14.0..=14.0).contains(&v) {
+                    app.location.timezone_offset = v;
+                    app.recalculate();
+                }
             }
         }
         Message::ElevationChanged(s) => {
             app.inputs.elv_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                app.location.elevation = v;
-                app.recalculate();
+                if (0.0..=9000.0).contains(&v) {
+                    app.location.elevation = v;
+                    app.recalculate();
+                }
             }
         }
         Message::LocationNameChanged(s) => {
@@ -446,6 +462,8 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 app.settings_open = false;
                 app.reset_inputs();
                 app.save_config();
+            } else if let Some(id) = app.window_id {
+                return Task::done(Message::HideToTray(id));
             }
         }
     }
