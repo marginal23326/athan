@@ -97,15 +97,3 @@ pub fn adjustment_grid(inputs: &[String; Prayer::COUNT]) -> Element<'_, Message>
 
     iced::widget::Column::with_children(rows).spacing(12).into()
 }
-
-pub fn adjustment_summary(adjustments: PrayerAdjustments) -> String {
-    Prayer::all()
-        .iter()
-        .copied()
-        .filter_map(|prayer| {
-            let minutes = adjustments.get(prayer);
-            (minutes != 0).then(|| format!("{} {minutes:+}", prayer.name()))
-        })
-        .collect::<Vec<_>>()
-        .join("  ")
-}

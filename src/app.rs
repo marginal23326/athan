@@ -3,6 +3,16 @@ use iced::Task;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SettingsTab {
+    #[default]
+    Location,
+    Calculation,
+    Adjustments,
+    Audio,
+    Interface,
+}
+
 #[derive(Debug, Clone)]
 pub enum Message {
     Tick(time::OffsetDateTime),
@@ -18,7 +28,7 @@ pub enum Message {
     ToggleArabic,
     #[cfg(feature = "hijri")]
     ToggleHijri,
-    ToggleAdjustments,
+    SetSettingsTab(SettingsTab),
     LocationNameChanged(String),
     AdjustmentChanged(Prayer, String),
     FocusNext,
@@ -37,6 +47,7 @@ pub enum Message {
 }
 
 pub struct SettingsState {
+    pub active_tab: SettingsTab,
     pub lat_input: String,
     pub lon_input: String,
     pub tz_input: String,
@@ -55,7 +66,6 @@ pub struct App {
     pub qiblah: f64,
     pub now: time::OffsetDateTime,
     pub settings_open: bool,
-    pub adjustments_open: bool,
     pub show_arabic: bool,
     #[cfg(feature = "hijri")]
     pub show_hijri: bool,
@@ -92,13 +102,13 @@ impl Default for App {
             qiblah: data.qiblah,
             now,
             settings_open: false,
-            adjustments_open: false,
             show_arabic: false,
             #[cfg(feature = "hijri")]
             show_hijri: false,
             #[cfg(feature = "detect")]
             is_detecting: false,
             inputs: SettingsState {
+                active_tab: SettingsTab::default(),
                 lat_input: loc.coordinates.latitude.to_string(),
                 lon_input: loc.coordinates.longitude.to_string(),
                 tz_input: loc.timezone_offset.to_string(),
@@ -385,10 +395,12 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.recalculate();
             app.save_config();
         }
+        Message::SetSettingsTab(tab) => {
+            app.inputs.active_tab = tab;
+        }
         Message::ToggleSettings => {
             app.settings_open = !app.settings_open;
             if !app.settings_open {
-                app.adjustments_open = false;
                 app.reset_inputs();
                 app.save_config();
             }
@@ -406,19 +418,10 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.show_hijri = !app.show_hijri;
             app.save_config();
         }
-        Message::ToggleAdjustments => {
-            app.adjustments_open = !app.adjustments_open;
-            if !app.adjustments_open {
-                app.save_config();
-            }
-        }
         Message::FocusNext => return iced::widget::operation::focus_next(),
         Message::FocusPrevious => return iced::widget::operation::focus_previous(),
         Message::EscapePressed => {
-            if app.adjustments_open {
-                app.adjustments_open = false;
-                app.save_config();
-            } else if app.settings_open {
+            if app.settings_open {
                 app.settings_open = false;
                 app.reset_inputs();
                 app.save_config();

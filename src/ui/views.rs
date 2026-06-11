@@ -181,7 +181,7 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>) -> Element<'_, M
                         text(format_time(time)).size(15).color(text_col).font(Font::MONOSPACE),
                     ]
                     .align_y(Alignment::Center)
-                    .padding([16, 20]),
+                    .padding([10, 20]),
                 )
                 .style(move |_| iced::widget::container::Style {
                     background: Some(

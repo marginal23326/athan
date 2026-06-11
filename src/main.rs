@@ -45,24 +45,7 @@ fn view(app: &App, id: iced::window::Id) -> Element<'_, Message> {
             .on_press(Message::ToggleSettings),
         );
 
-        if app.adjustments_open {
-            stack![
-                base,
-                settings_layer,
-                opaque(
-                    mouse_area(center(opaque(ui::modals::adjustments_modal(app))).style(|_| {
-                        iced::widget::container::Style {
-                            background: Some(ui::styles::MODAL_BACKDROP.into()),
-                            ..Default::default()
-                        }
-                    }))
-                    .on_press(Message::ToggleAdjustments)
-                )
-            ]
-            .into()
-        } else {
-            stack![base, settings_layer].into()
-        }
+        stack![base, settings_layer].into()
     } else {
         base
     }
