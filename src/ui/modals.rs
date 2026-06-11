@@ -1,7 +1,5 @@
 use crate::app::{App, Message, SettingsTab};
-use crate::ui::components::{
-    adjustment_grid, can_be_float, labeled_input, labeled_picker, toggle_row,
-};
+use crate::ui::components::{adjustment_grid, can_be_float, labeled_input, labeled_picker, toggle_row};
 use crate::ui::styles;
 use athan::core::*;
 
@@ -172,40 +170,34 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
             iced::widget::Column::with_children(items).spacing(20).into()
         }
 
-        SettingsTab::Calculation => {
-            column![
-                labeled_picker(
-                    "Fajr & Isha Convention",
-                    CalculationMethod::variants(),
-                    Some(app.calculation_method),
-                    Message::MethodChanged
-                ),
-                labeled_picker(
-                    "Asr Juristic Rule",
-                    AsrMethod::variants(),
-                    Some(app.asr_method),
-                    Message::AsrMethodChanged
-                ),
-            ]
-            .spacing(12)
-            .into()
-        }
+        SettingsTab::Calculation => column![
+            labeled_picker(
+                "Fajr & Isha Convention",
+                CalculationMethod::variants(),
+                Some(app.calculation_method),
+                Message::MethodChanged
+            ),
+            labeled_picker(
+                "Asr Juristic Rule",
+                AsrMethod::variants(),
+                Some(app.asr_method),
+                Message::AsrMethodChanged
+            ),
+        ]
+        .spacing(12)
+        .into(),
 
-        SettingsTab::Adjustments => {
-            column![
-                text("Manual Minute Adjustments")
-                    .size(13)
-                    .color(styles::TEXT_PRIMARY),
-                text("Offset specific prayer times by a number of minutes. Use negative values to make a prayer earlier.")
-                    .size(11)
-                    .color(styles::TEXT_MUTED)
-                    .wrapping(Wrapping::WordOrGlyph),
-                Space::new().height(4),
-                adjustment_grid(&app.inputs.adjustment_inputs)
-            ]
-            .spacing(12)
-            .into()
-        }
+        SettingsTab::Adjustments => column![
+            text("Manual Minute Adjustments").size(13).color(styles::TEXT_PRIMARY),
+            text("Offset specific prayer times by a number of minutes. Use negative values to make a prayer earlier.")
+                .size(11)
+                .color(styles::TEXT_MUTED)
+                .wrapping(Wrapping::WordOrGlyph),
+            Space::new().height(4),
+            adjustment_grid(&app.inputs.adjustment_inputs)
+        ]
+        .spacing(12)
+        .into(),
 
         SettingsTab::Audio => column![
             row![

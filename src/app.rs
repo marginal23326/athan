@@ -74,7 +74,8 @@ pub struct App {
     pub error: Option<String>,
     pub window_id: Option<iced::window::Id>,
     pub tray: Option<crate::tray::TrayHandle>,
-    pub tray_rx: Option<Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>>,
+    pub tray_rx:
+        Option<Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>>,
     pub start_on_boot: bool,
     pub volume: f32,
     pub last_prayer_announced: Option<(time::Date, Prayer)>,
@@ -203,52 +204,55 @@ impl App {
     pub fn save_config(&self) {
         crate::config::save(&self.to_config());
     }
+
+    fn handle_tick(&mut self, now: time::OffsetDateTime) -> Task<Message> {
+        let old_date = self.location.local_date(self.now);
+        self.now = now;
+        let current_date = self.location.local_date(self.now);
+
+        if current_date != old_date {
+            self.recalculate();
+        }
+
+        let mut out_task = Task::none();
+
+        if let Some(times) = &self.prayer_times {
+            let offset =
+                time::UtcOffset::from_whole_seconds((self.location.effective_timezone_offset() * 3600.0) as i32)
+                    .unwrap_or(time::UtcOffset::UTC);
+            let now_local = self.now.to_offset(offset);
+
+            let mut latest_passed = None;
+            for &(prayer, ptime) in &times.as_array() {
+                if ptime <= now_local.time() {
+                    latest_passed = Some(prayer);
+                }
+            }
+
+            if let Some(prayer) = latest_passed {
+                let key = (current_date, prayer);
+                if self.last_prayer_announced.is_none() {
+                    self.last_prayer_announced = Some(key);
+                } else if self.last_prayer_announced != Some(key) {
+                    self.last_prayer_announced = Some(key);
+                    out_task = Task::done(Message::PlayAdhan(Some(prayer)));
+                }
+            }
+
+            if let Some(tray) = &self.tray {
+                let tooltip = format_tray_tooltip(times, self.now, offset);
+                let playing = self.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
+                tray.update(&tooltip, playing);
+            }
+        }
+
+        out_task
+    }
 }
 
 pub fn update(app: &mut App, msg: Message) -> Task<Message> {
     match msg {
-        Message::Tick(now) => {
-            let old_date = app.location.local_date(app.now);
-            app.now = now;
-            let current_date = app.location.local_date(app.now);
-
-            if current_date != old_date {
-                app.recalculate();
-            }
-
-            let mut out_task = Task::none();
-
-            if let Some(times) = &app.prayer_times {
-                let offset =
-                    time::UtcOffset::from_whole_seconds((app.location.effective_timezone_offset() * 3600.0) as i32)
-                        .unwrap_or(time::UtcOffset::UTC);
-                let now_local = app.now.to_offset(offset);
-
-                let mut latest_passed = None;
-                for &(prayer, ptime) in &times.as_array() {
-                    if ptime <= now_local.time() {
-                        latest_passed = Some(prayer);
-                    }
-                }
-
-                if let Some(prayer) = latest_passed {
-                    let key = (current_date, prayer);
-                    if app.last_prayer_announced.is_none() {
-                        app.last_prayer_announced = Some(key);
-                    } else if app.last_prayer_announced != Some(key) {
-                        app.last_prayer_announced = Some(key);
-                        out_task = Task::done(Message::PlayAdhan(Some(prayer)));
-                    }
-                }
-
-                if let Some(tray) = &app.tray {
-                    let tooltip = format_tray_tooltip(times, app.now, offset);
-                    let playing = app.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
-                    tray.update(&tooltip, playing);
-                }
-            }
-            return out_task;
-        }
+        Message::Tick(now) => return app.handle_tick(now),
         Message::PlayAdhan(prayer) => {
             if let Some(audio) = &app.audio {
                 let mut path = crate::audio::default_adhan_path();
@@ -357,14 +361,15 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         Message::DetectLocation => {
             app.is_detecting = true;
             let (tx, rx) = futures_channel::oneshot::channel();
-            
+
             std::thread::spawn(move || {
                 let _ = tx.send(detect_location());
             });
 
             return Task::perform(
                 async move {
-                    rx.await.unwrap_or_else(|_| Err(DetectError::Internal("Thread aborted".into())))
+                    rx.await
+                        .unwrap_or_else(|_| Err(DetectError::Internal("Thread aborted".into())))
                 },
                 Message::LocationDetected,
             );

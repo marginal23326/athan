@@ -51,7 +51,7 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
         column![
             top_bar,
             hero_section(app, now_local, next_p),
-            prayer_list(app, next_p),
+            prayer_list(app, next_p, now_local.time()),
             footer
         ]
         .spacing(24)
@@ -151,7 +151,7 @@ fn hero_section(
         .into()
 }
 
-fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>) -> Element<'_, Message> {
+fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: time::Time) -> Element<'_, Message> {
     if let Some(times) = &app.prayer_times {
         let next_prayer_enum = next_p.map(|(p, _)| p);
 
@@ -162,7 +162,16 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>) -> Element<'_, M
             .enumerate()
             .map(|(i, &(prayer, time))| {
                 let is_next = next_prayer_enum == Some(prayer);
-                let text_col = if is_next { styles::ACCENT } else { styles::TEXT_PRIMARY };
+
+                let is_past = time < current_time && !is_next;
+
+                let text_col = if is_next {
+                    styles::ACCENT
+                } else if is_past {
+                    iced::Color::from_rgba(styles::TEXT_MUTED.r, styles::TEXT_MUTED.g, styles::TEXT_MUTED.b, 0.5)
+                } else {
+                    styles::TEXT_PRIMARY
+                };
 
                 let row_content = container(
                     row![
@@ -171,6 +180,13 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>) -> Element<'_, M
                         if app.show_arabic && prayer.name() != prayer.arabic_name() {
                             Element::from(text(prayer.arabic_name()).size(14).color(if is_next {
                                 styles::ACCENT
+                            } else if is_past {
+                                iced::Color::from_rgba(
+                                    styles::TEXT_MUTED.r,
+                                    styles::TEXT_MUTED.g,
+                                    styles::TEXT_MUTED.b,
+                                    0.5,
+                                )
                             } else {
                                 styles::TEXT_MUTED
                             }))
