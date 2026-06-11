@@ -58,7 +58,7 @@ fn subscription(app: &App) -> Subscription<Message> {
         let (tx, rx) = futures_channel::mpsc::unbounded();
         std::thread::spawn(move || {
             loop {
-                std::thread::sleep(std::time::Duration::from_secs(1));
+                std::thread::sleep(std::time::Duration::from_millis(500));
                 if tx.unbounded_send(()).is_err() {
                     break;
                 }

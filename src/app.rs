@@ -291,7 +291,6 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             if let Some(audio) = &app.audio {
                 audio.set_volume(v);
             }
-            app.save_config();
         }
         Message::HideToTray(id) => {
             if app.window_id == Some(id) {
