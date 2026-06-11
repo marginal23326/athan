@@ -29,6 +29,15 @@ pub fn button(_theme: &Theme, status: button_widget::Status) -> button_widget::S
             border: base_border,
             ..Default::default()
         },
+        button_widget::Status::Disabled => button_widget::Style {
+            background: Some(SURFACE.into()),
+            text_color: Color::from_rgba(TEXT_MUTED.r, TEXT_MUTED.g, TEXT_MUTED.b, 0.4),
+            border: Border {
+                color: Color::from_rgba(BORDER.r, BORDER.g, BORDER.b, 0.4),
+                ..base_border
+            },
+            ..Default::default()
+        },
         _ => button_widget::Style {
             background: Some(SURFACE.into()),
             text_color: TEXT_MUTED,
