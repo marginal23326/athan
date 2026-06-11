@@ -279,13 +279,15 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         }
         Message::HideToTray(id) => {
             if app.window_id == Some(id) {
-                app.window_id = None;
                 return iced::window::close(id);
             }
         }
         Message::WindowClosed(id) => {
             if app.window_id == Some(id) {
                 app.window_id = None;
+                app.settings_open = false;
+                app.reset_inputs();
+                app.save_config();
             }
         }
         Message::TrayEvent(crate::tray::TrayEvent::Clicked) => {
@@ -299,6 +301,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::TrayEvent(crate::tray::TrayEvent::Exit) => {
+            app.save_config();
             return iced::exit();
         }
         Message::TrayEvent(crate::tray::TrayEvent::StopAdhan) => {
