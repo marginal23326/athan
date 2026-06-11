@@ -154,9 +154,12 @@ impl App {
     }
 
     pub fn main_window_settings() -> iced::window::Settings {
+        let icon = iced::window::icon::from_rgba(crate::tray::generate_icon(64), 64, 64).ok();
+
         iced::window::Settings {
             size: iced::Size::new(450.0, 640.0),
             position: iced::window::Position::Centered,
+            icon,
             ..Default::default()
         }
     }
