@@ -55,6 +55,10 @@ pub struct Cli {
     /// Enable Daylight Saving Time (+1 hr).
     #[argp(switch)]
     pub dst: bool,
+
+    /// Format output times using a 24-hour clock.
+    #[argp(switch)]
+    pub use_24h: bool,
 }
 
 #[derive(Clone, Copy)]
@@ -227,7 +231,7 @@ pub fn run() -> Result<(), CliError> {
             out,
             "  {:<name_width$} {:>time_width$}   {}{}",
             prayer.name(),
-            format_time(time),
+            format_time(time, cli.use_24h),
             marker,
             status
         )

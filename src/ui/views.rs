@@ -43,7 +43,9 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
             .size(12)
             .color(styles::TEXT_MUTED),
         text(" "),
-        text(format_time(now_local.time())).size(12).color(styles::TEXT_MUTED),
+        text(format_time(now_local.time(), app.use_24h))
+            .size(12)
+            .color(styles::TEXT_MUTED),
     ]
     .align_y(Alignment::Center);
 
@@ -124,7 +126,7 @@ fn hero_section(
                 column![
                     text("NEXT PRAYER").size(11).color(styles::TEXT_MUTED),
                     text(prayer.uppercase_name()).size(30).color(styles::TEXT_PRIMARY),
-                    text(format_time(ptime)).size(15).color(styles::TEXT_MUTED),
+                    text(format_time(ptime, app.use_24h)).size(15).color(styles::TEXT_MUTED),
                     Space::new().height(8),
                     play_btn,
                 ]
@@ -194,7 +196,10 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: ti
                             Element::from(space())
                         },
                         Space::new().width(12),
-                        text(format_time(time)).size(15).color(text_col).font(Font::MONOSPACE),
+                        text(format_time(time, app.use_24h))
+                            .size(15)
+                            .color(text_col)
+                            .font(Font::MONOSPACE),
                     ]
                     .align_y(Alignment::Center)
                     .padding([10, 20]),

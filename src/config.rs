@@ -8,14 +8,10 @@ pub struct Config {
     pub asr_method: AsrMethod,
     pub prayer_adjustments: PrayerAdjustments,
     pub show_arabic: bool,
-    #[serde(default = "default_volume")]
+    pub use_24h: bool,
     pub volume: f32,
     #[cfg(feature = "hijri")]
     pub show_hijri: bool,
-}
-
-pub fn default_volume() -> f32 {
-    0.5
 }
 
 fn config_path() -> Option<std::path::PathBuf> {
@@ -69,7 +65,6 @@ mod autostart {
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         if enable {
             if let Some(cmd) = get_cmd() {
-                // create_subkey opens with required access if it exists, or creates it
                 if let Ok((key, _)) = hkcu.create_subkey(REG_KEY) {
                     let _ = key.set_value(APP_NAME, &cmd);
                 }

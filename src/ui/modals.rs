@@ -219,6 +219,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
                     Message::ToggleStartOnBoot
                 }),
                 toggle_row("Show Arabic Names", app.show_arabic, |_| Message::ToggleArabic),
+                toggle_row("Use 24-Hour Format", app.use_24h, |_| Message::ToggleTimeFormat),
             ];
 
             #[cfg(feature = "hijri")]

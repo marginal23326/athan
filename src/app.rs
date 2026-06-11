@@ -27,6 +27,7 @@ pub enum Message {
     ToggleArabic,
     #[cfg(feature = "hijri")]
     ToggleHijri,
+    ToggleTimeFormat,
     SetSettingsTab(SettingsTab),
     LocationNameChanged(String),
     AdjustmentChanged(Prayer, String),
@@ -66,6 +67,7 @@ pub struct App {
     pub now: time::OffsetDateTime,
     pub settings_open: bool,
     pub show_arabic: bool,
+    pub use_24h: bool,
     #[cfg(feature = "hijri")]
     pub show_hijri: bool,
     #[cfg(feature = "detect")]
@@ -103,6 +105,7 @@ impl Default for App {
             now,
             settings_open: false,
             show_arabic: false,
+            use_24h: false,
             #[cfg(feature = "hijri")]
             show_hijri: false,
             #[cfg(feature = "detect")]
@@ -121,7 +124,7 @@ impl Default for App {
             tray: None,
             tray_rx: None,
             start_on_boot: crate::config::is_autostart(),
-            volume: crate::config::default_volume(),
+            volume: 0.5,
             last_prayer_announced: None,
             audio: crate::audio::AudioPlayer::new(),
         }
@@ -179,6 +182,7 @@ impl App {
         self.asr_method = config.asr_method;
         self.prayer_adjustments = config.prayer_adjustments;
         self.show_arabic = config.show_arabic;
+        self.use_24h = config.use_24h;
         self.volume = config.volume;
         if let Some(audio) = &self.audio {
             audio.set_volume(self.volume);
@@ -198,6 +202,7 @@ impl App {
             asr_method: self.asr_method,
             prayer_adjustments: self.prayer_adjustments,
             show_arabic: self.show_arabic,
+            use_24h: self.use_24h,
             volume: self.volume,
             #[cfg(feature = "hijri")]
             show_hijri: self.show_hijri,
@@ -243,7 +248,7 @@ impl App {
             }
 
             if let Some(tray) = &self.tray {
-                let tooltip = format_tray_tooltip(times, self.now, offset);
+                let tooltip = format_tray_tooltip(times, self.now, offset, self.use_24h);
                 let playing = self.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
                 tray.update(&tooltip, playing);
             }
@@ -430,6 +435,10 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.show_hijri = !app.show_hijri;
             app.save_config();
         }
+        Message::ToggleTimeFormat => {
+            app.use_24h = !app.use_24h;
+            app.save_config();
+        }
         Message::FocusNext => return iced::widget::operation::focus_next(),
         Message::FocusPrevious => return iced::widget::operation::focus_previous(),
         Message::EscapePressed => {
@@ -444,7 +453,12 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
     Task::none()
 }
 
-fn format_tray_tooltip(prayer_times: &PrayerTimes, now: time::OffsetDateTime, offset: time::UtcOffset) -> String {
+fn format_tray_tooltip(
+    prayer_times: &PrayerTimes,
+    now: time::OffsetDateTime,
+    offset: time::UtcOffset,
+    use_24h: bool,
+) -> String {
     let now_local = now.to_offset(offset);
     let (prayer, ptime) = next_prayer(prayer_times, now_local.time());
     let remaining = time_until(ptime, now_local.time());
@@ -454,8 +468,14 @@ fn format_tray_tooltip(prayer_times: &PrayerTimes, now: time::OffsetDateTime, of
     let mins = total_minutes % 60;
 
     if hours > 0 {
-        format!("{} at {} — in {}h {}m", prayer.name(), format_time(ptime), hours, mins)
+        format!(
+            "{} at {} — in {}h {}m",
+            prayer.name(),
+            format_time(ptime, use_24h),
+            hours,
+            mins
+        )
     } else {
-        format!("{} at {} — in {}m", prayer.name(), format_time(ptime), mins)
+        format!("{} at {} — in {}m", prayer.name(), format_time(ptime, use_24h), mins)
     }
 }

@@ -6,15 +6,19 @@ pub fn format_duration(d: time::Duration) -> String {
     format!("{:02}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60)
 }
 
-pub fn format_time(t: time::Time) -> String {
+pub fn format_time(t: time::Time, use_24h: bool) -> String {
     let (h, m, _) = t.as_hms();
-    let ampm = if h < 12 { "AM" } else { "PM" };
-    let h12 = if h == 0 {
-        12
-    } else if h > 12 {
-        h - 12
+    if use_24h {
+        format!("{:02}:{:02}", h, m)
     } else {
-        h
-    };
-    format!("{}:{:02} {}", h12, m, ampm)
+        let ampm = if h < 12 { "AM" } else { "PM" };
+        let h12 = if h == 0 {
+            12
+        } else if h > 12 {
+            h - 12
+        } else {
+            h
+        };
+        format!("{}:{:02} {}", h12, m, ampm)
+    }
 }
