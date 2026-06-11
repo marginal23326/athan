@@ -157,6 +157,7 @@ version = "0.1.0"
 dependencies = [
  "argp",
  "directories",
+ "futures-channel",
  "iced",
  "icu_calendar",
  "ksni",
@@ -1327,7 +1328,6 @@ dependencies = [
  "iced_core",
  "log",
  "rustc-hash 2.1.2",
- "tokio",
  "wasm-bindgen-futures",
  "wasmtimer",
 ]

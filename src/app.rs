@@ -1,7 +1,6 @@
 use athan::core::*;
 use iced::Task;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SettingsTab {
@@ -75,7 +74,7 @@ pub struct App {
     pub error: Option<String>,
     pub window_id: Option<iced::window::Id>,
     pub tray: Option<crate::tray::TrayHandle>,
-    pub tray_rx: Option<Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>,
+    pub tray_rx: Option<Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>>,
     pub start_on_boot: bool,
     pub volume: f32,
     pub last_prayer_announced: Option<(time::Date, Prayer)>,
@@ -357,13 +356,15 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         #[cfg(feature = "detect")]
         Message::DetectLocation => {
             app.is_detecting = true;
+            let (tx, rx) = futures_channel::oneshot::channel();
+            
+            std::thread::spawn(move || {
+                let _ = tx.send(detect_location());
+            });
 
             return Task::perform(
-                async {
-                    tokio::task::spawn_blocking(detect_location)
-                        .await
-                        .map_err(|e| DetectError::Internal(format!("Task failed: {e}")))
-                        .and_then(|res| res)
+                async move {
+                    rx.await.unwrap_or_else(|_| Err(DetectError::Internal("Thread aborted".into())))
                 },
                 Message::LocationDetected,
             );

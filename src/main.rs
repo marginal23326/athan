@@ -8,10 +8,12 @@ use app::{App, Message, update};
 use iced::widget::{center, mouse_area, opaque, stack};
 use iced::{Element, Subscription, Task};
 use std::sync::Arc;
-use tokio::sync::Mutex;
+
+#[derive(Hash, Clone, Copy, PartialEq, Eq)]
+struct TimerId;
 
 #[derive(Clone)]
-struct TrayReceiver(Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>);
+struct TrayReceiver(Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>);
 
 impl std::hash::Hash for TrayReceiver {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -52,8 +54,22 @@ fn view(app: &App, id: iced::window::Id) -> Element<'_, Message> {
 }
 
 fn subscription(app: &App) -> Subscription<Message> {
-    let tick =
-        iced::time::every(std::time::Duration::from_secs(1)).map(|_| Message::Tick(time::OffsetDateTime::now_utc()));
+    let tick = iced::Subscription::run_with(TimerId, |_| {
+        let (tx, rx) = futures_channel::mpsc::unbounded();
+        std::thread::spawn(move || {
+            loop {
+                std::thread::sleep(std::time::Duration::from_secs(1));
+                if tx.unbounded_send(()).is_err() {
+                    break;
+                }
+            }
+        });
+        iced::futures::stream::unfold(rx, |mut rx| async move {
+            use iced::futures::StreamExt;
+            let _ = rx.next().await?;
+            Some((Message::Tick(time::OffsetDateTime::now_utc()), rx))
+        })
+    });
 
     let events = iced::event::listen_with(|event, status, id| match event {
         iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::HideToTray(id)),
@@ -77,14 +93,21 @@ fn subscription(app: &App) -> Subscription<Message> {
     let mut subs = vec![tick, events];
 
     if let Some(rx_arc) = &app.tray_rx {
-        let tray_sub = iced::Subscription::run_with(TrayReceiver(rx_arc.clone()), |receiver| {
-            let rx = receiver.0.clone();
-            iced::futures::stream::unfold(rx, |rx| async move {
-                let mut lock = rx.lock().await;
-                let event = lock.recv().await?;
-                Some((Message::TrayEvent(event), rx.clone()))
-            })
-        });
+        let tray_sub = iced::Subscription::run_with(
+            TrayReceiver(rx_arc.clone()),
+            |receiver| -> std::pin::Pin<Box<dyn iced::futures::Stream<Item = Message> + Send>> {
+                if let Ok(mut opt) = receiver.0.lock() {
+                    if let Some(rx) = opt.take() {
+                        return Box::pin(iced::futures::stream::unfold(rx, |mut rx| async move {
+                            use iced::futures::StreamExt;
+                            let event = rx.next().await?;
+                            Some((Message::TrayEvent(event), rx))
+                        }));
+                    }
+                }
+                Box::pin(iced::futures::stream::empty())
+            },
+        );
         subs.push(tray_sub);
     }
 
@@ -117,7 +140,7 @@ fn new() -> (App, Task<Message>) {
 
     if let Some((tray, tray_rx)) = tray::spawn("Athan") {
         app.tray = Some(tray);
-        app.tray_rx = Some(Arc::new(Mutex::new(tray_rx)));
+        app.tray_rx = Some(Arc::new(std::sync::Mutex::new(Some(tray_rx))));
     }
 
     if minimized {

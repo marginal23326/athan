@@ -1,4 +1,4 @@
-use tokio::sync::mpsc as tokio_mpsc;
+use futures_channel::mpsc;
 
 #[derive(Debug, Clone, Copy)]
 pub enum TrayEvent {
@@ -9,7 +9,7 @@ pub enum TrayEvent {
 
 pub struct TrayHandle {
     #[cfg(target_os = "linux")]
-    update_tx: tokio_mpsc::UnboundedSender<(String, bool)>,
+    update_tx: mpsc::UnboundedSender<(String, bool)>,
     #[cfg(target_os = "windows")]
     tray_icon: tray_icon::TrayIcon,
     #[cfg(target_os = "windows")]
@@ -39,17 +39,14 @@ pub fn generate_icon(size: u32) -> Vec<u8> {
     let scale = 1.2_f64;
     let px_size = 2.0 / (size as f64) / scale;
 
-    // Charcoal: #18181b
     let charcoal_r = 24.0;
     let charcoal_g = 24.0;
     let charcoal_b = 27.0;
 
-    // Gold: #eab308
     let gold_r = 234.0;
     let gold_g = 179.0;
     let gold_b = 8.0;
 
-    // Rounded box geometry
     let box_w = 0.65;
     let box_h = 0.65;
     let r = 0.16;
@@ -115,7 +112,7 @@ struct AthanTray {
     tooltip: String,
     playing: bool,
     icon: Vec<ksni::Icon>,
-    tx: tokio_mpsc::UnboundedSender<TrayEvent>,
+    tx: mpsc::UnboundedSender<TrayEvent>,
 }
 
 #[cfg(target_os = "linux")]
@@ -137,7 +134,7 @@ impl ksni::Tray for AthanTray {
         self.icon.clone()
     }
     fn activate(&mut self, _x: i32, _y: i32) {
-        let _ = self.tx.send(TrayEvent::Clicked);
+        let _ = self.tx.unbounded_send(TrayEvent::Clicked);
     }
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
         use ksni::menu::*;
@@ -145,7 +142,7 @@ impl ksni::Tray for AthanTray {
             StandardItem {
                 label: "Open".into(),
                 activate: Box::new(|this: &mut AthanTray| {
-                    let _ = this.tx.send(TrayEvent::Clicked);
+                    let _ = this.tx.unbounded_send(TrayEvent::Clicked);
                 }),
                 ..Default::default()
             }
@@ -158,7 +155,7 @@ impl ksni::Tray for AthanTray {
                 StandardItem {
                     label: "Stop Adhan".into(),
                     activate: Box::new(|this: &mut AthanTray| {
-                        let _ = this.tx.send(TrayEvent::StopAdhan);
+                        let _ = this.tx.unbounded_send(TrayEvent::StopAdhan);
                     }),
                     ..Default::default()
                 }
@@ -171,7 +168,7 @@ impl ksni::Tray for AthanTray {
             StandardItem {
                 label: "Exit".into(),
                 activate: Box::new(|this: &mut AthanTray| {
-                    let _ = this.tx.send(TrayEvent::Exit);
+                    let _ = this.tx.unbounded_send(TrayEvent::Exit);
                 }),
                 ..Default::default()
             }
@@ -182,17 +179,18 @@ impl ksni::Tray for AthanTray {
     }
 }
 
-pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::UnboundedReceiver<TrayEvent>)> {
-    let (tx, rx) = tokio_mpsc::unbounded_channel();
+pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiver<TrayEvent>)> {
+    let (tx, rx) = mpsc::unbounded();
 
     #[cfg(target_os = "linux")]
     {
-        let (update_tx, mut update_rx) = tokio_mpsc::unbounded_channel::<(String, bool)>();
+        let (update_tx, mut update_rx) = mpsc::unbounded::<(String, bool)>();
         let tooltip = initial_tooltip.to_string();
 
         std::thread::spawn(move || {
             if let Ok(rt) = tokio::runtime::Builder::new_current_thread().enable_all().build() {
                 rt.block_on(async move {
+                    use iced::futures::StreamExt;
                     use ksni::TrayMethods;
                     let tray = AthanTray {
                         tooltip,
@@ -201,7 +199,7 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
                         tx,
                     };
                     if let Ok(handle) = tray.spawn().await {
-                        while let Some((new_tooltip, playing)) = update_rx.recv().await {
+                        while let Some((new_tooltip, playing)) = update_rx.next().await {
                             let _ = handle
                                 .update(|tray: &mut AthanTray| {
                                     tray.tooltip = new_tooltip;
@@ -255,18 +253,18 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, tokio_mpsc::Unbounded
                 ..
             } = event
             {
-                let _ = tx_click.send(TrayEvent::Clicked);
+                let _ = tx_click.unbounded_send(TrayEvent::Clicked);
             }
         }));
 
         let tx_menu = tx.clone();
         tray_icon::menu::MenuEvent::set_event_handler(Some(move |event: tray_icon::menu::MenuEvent| {
             if event.id == open_id {
-                let _ = tx_menu.send(TrayEvent::Clicked);
+                let _ = tx_menu.unbounded_send(TrayEvent::Clicked);
             } else if event.id == stop_id {
-                let _ = tx_menu.send(TrayEvent::StopAdhan);
+                let _ = tx_menu.unbounded_send(TrayEvent::StopAdhan);
             } else if event.id == exit_id {
-                let _ = tx_menu.send(TrayEvent::Exit);
+                let _ = tx_menu.unbounded_send(TrayEvent::Exit);
             }
         }));
 
@@ -281,7 +279,7 @@ impl TrayHandle {
     pub fn update(&self, text: &str, playing: bool) {
         #[cfg(target_os = "linux")]
         {
-            let _ = self.update_tx.send((text.to_string(), playing));
+            let _ = self.update_tx.unbounded_send((text.to_string(), playing));
         }
         #[cfg(target_os = "windows")]
         {
