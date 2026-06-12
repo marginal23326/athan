@@ -1,4 +1,10 @@
 use futures_channel::mpsc;
+use std::sync::OnceLock;
+
+pub fn cached_icon_rgba_64() -> &'static [u8] {
+    static ICON: OnceLock<Vec<u8>> = OnceLock::new();
+    ICON.get_or_init(|| generate_icon(64))
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum TrayEvent {
@@ -19,7 +25,7 @@ pub struct TrayHandle {
 #[cfg(target_os = "linux")]
 fn make_icon() -> ksni::Icon {
     let size = 64;
-    let rgba = generate_icon(size);
+    let rgba = cached_icon_rgba_64().to_vec();
     let mut argb = Vec::with_capacity(rgba.len());
     for chunk in rgba.chunks_exact(4) {
         argb.push(chunk[3]); // Alpha
@@ -230,8 +236,8 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
         let _ = menu.append(&PredefinedMenuItem::separator());
         let _ = menu.append(&exit_item);
 
-        let size = 32;
-        let rgba = generate_icon(size);
+        let size = 64;
+        let rgba = cached_icon_rgba_64().to_vec();
         let icon = tray_icon::Icon::from_rgba(rgba, size, size).ok()?;
 
         let tray_icon = TrayIconBuilder::new()
