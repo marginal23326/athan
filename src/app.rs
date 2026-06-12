@@ -363,6 +363,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.save_config();
         }
         Message::LatitudeChanged(s) => {
+            app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.lat_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
@@ -373,6 +374,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::LongitudeChanged(s) => {
+            app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.lon_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
@@ -383,6 +385,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::TimezoneChanged(s) => {
+            app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.tz_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
@@ -393,6 +396,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::ElevationChanged(s) => {
+            app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.elv_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
@@ -403,6 +407,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::LocationNameChanged(s) => {
+            app.is_detecting = false;
             app.inputs.loc_name_input = s.clone();
             app.location.name = s;
         }
@@ -434,26 +439,31 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             );
         }
         #[cfg(feature = "detect")]
-        Message::LocationDetected(Ok(data)) => {
+        Message::LocationDetected(res) => {
+            if !app.is_detecting {
+                return Task::none();
+            }
             app.is_detecting = false;
-            app.inputs.loc_name_input = data.name.clone();
-            app.inputs.lat_input = data.lat.to_string();
-            app.inputs.lon_input = data.lon.to_string();
-            app.inputs.tz_input = format!("{:.1}", data.offset);
-            app.inputs.elv_input = data.elevation.to_string();
-            app.location.name = data.name;
-            app.location.coordinates.latitude = data.lat;
-            app.location.coordinates.longitude = data.lon;
-            app.location.timezone_offset = data.offset;
-            app.location.dst = false;
-            app.location.elevation = data.elevation;
-            app.recalculate();
-            app.save_config();
-        }
-        #[cfg(feature = "detect")]
-        Message::LocationDetected(Err(e)) => {
-            app.is_detecting = false;
-            app.error = Some(e.to_string());
+            match res {
+                Ok(data) => {
+                    app.inputs.loc_name_input = data.name.clone();
+                    app.inputs.lat_input = data.lat.to_string();
+                    app.inputs.lon_input = data.lon.to_string();
+                    app.inputs.tz_input = format!("{:.1}", data.offset);
+                    app.inputs.elv_input = data.elevation.to_string();
+                    app.location.name = data.name;
+                    app.location.coordinates.latitude = data.lat;
+                    app.location.coordinates.longitude = data.lon;
+                    app.location.timezone_offset = data.offset;
+                    app.location.dst = false;
+                    app.location.elevation = data.elevation;
+                    app.recalculate();
+                    app.save_config();
+                }
+                Err(e) => {
+                    app.error = Some(e.to_string());
+                }
+            }
         }
         Message::ToggleDst => {
             app.location.dst = !app.location.dst;
