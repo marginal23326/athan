@@ -84,7 +84,7 @@ pub struct App {
     pub volume: f32,
     pub last_prayer_announced: Option<(time::Date, Prayer)>,
     pub audio: Option<crate::audio::AudioPlayer>,
-    pub last_tray_state: Option<(u8, bool)>,
+    pub last_tray_state: Option<(u8, bool, bool)>,
     pub local_offset: time::UtcOffset,
 }
 
@@ -262,11 +262,12 @@ impl App {
             if let Some(tray) = &self.tray {
                 let playing = self.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
                 let current_minute = now_local.time().minute();
+                let is_open = self.window_id.is_some();
 
-                let new_state = (current_minute, playing);
+                let new_state = (current_minute, playing, is_open);
                 if self.last_tray_state != Some(new_state) {
                     let tooltip = format_tray_tooltip(times, self.now, offset, self.use_24h);
-                    tray.update(&tooltip, playing);
+                    tray.update(&tooltip, playing, is_open);
                     self.last_tray_state = Some(new_state);
                 }
             }
@@ -315,14 +316,15 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 app.save_config();
             }
         }
-        Message::TrayEvent(crate::tray::TrayEvent::Clicked) => {
-            if app.window_id.is_none() {
+        Message::TrayEvent(crate::tray::TrayEvent::ToggleWindow) => {
+            if let Some(id) = app.window_id {
+                app.save_config();
+                return iced::window::close(id);
+            } else {
                 let now = app.now;
                 let (id, task) = iced::window::open(App::main_window_settings());
                 app.window_id = Some(id);
                 return task.map(move |_| Message::Tick(now));
-            } else if let Some(id) = app.window_id {
-                return Task::batch(vec![iced::window::minimize(id, false), iced::window::gain_focus(id)]);
             }
         }
         Message::TrayEvent(crate::tray::TrayEvent::Exit) => {

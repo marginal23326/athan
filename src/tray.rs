@@ -8,18 +8,20 @@ pub fn cached_icon_rgba_64() -> &'static [u8] {
 
 #[derive(Debug, Clone, Copy)]
 pub enum TrayEvent {
-    Clicked,
+    ToggleWindow,
     Exit,
     StopAdhan,
 }
 
 pub struct TrayHandle {
     #[cfg(target_os = "linux")]
-    update_tx: mpsc::UnboundedSender<(String, bool)>,
+    update_tx: mpsc::UnboundedSender<(String, bool, bool)>,
     #[cfg(target_os = "windows")]
     tray_icon: tray_icon::TrayIcon,
     #[cfg(target_os = "windows")]
     stop_item: tray_icon::menu::MenuItem,
+    #[cfg(target_os = "windows")]
+    toggle_item: tray_icon::menu::MenuItem,
 }
 
 #[cfg(target_os = "linux")]
@@ -117,6 +119,7 @@ pub fn generate_icon(size: u32) -> Vec<u8> {
 struct AthanTray {
     tooltip: String,
     playing: bool,
+    is_window_open: bool,
     icon: Vec<ksni::Icon>,
     tx: mpsc::UnboundedSender<TrayEvent>,
 }
@@ -140,15 +143,16 @@ impl ksni::Tray for AthanTray {
         self.icon.clone()
     }
     fn activate(&mut self, _x: i32, _y: i32) {
-        let _ = self.tx.unbounded_send(TrayEvent::Clicked);
+        let _ = self.tx.unbounded_send(TrayEvent::ToggleWindow);
     }
     fn menu(&self) -> Vec<ksni::MenuItem<Self>> {
         use ksni::menu::*;
+        let toggle_label = if self.is_window_open { "Hide" } else { "Show" };
         let mut items = vec![
             StandardItem {
-                label: "Open".into(),
+                label: toggle_label.into(),
                 activate: Box::new(|this: &mut AthanTray| {
-                    let _ = this.tx.unbounded_send(TrayEvent::Clicked);
+                    let _ = this.tx.unbounded_send(TrayEvent::ToggleWindow);
                 }),
                 ..Default::default()
             }
@@ -190,7 +194,7 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
 
     #[cfg(target_os = "linux")]
     {
-        let (update_tx, mut update_rx) = mpsc::unbounded::<(String, bool)>();
+        let (update_tx, mut update_rx) = mpsc::unbounded::<(String, bool, bool)>();
         let tooltip = initial_tooltip.to_string();
 
         std::thread::spawn(move || {
@@ -201,15 +205,17 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
                     let tray = AthanTray {
                         tooltip,
                         playing: false,
+                        is_window_open: false,
                         icon: vec![make_icon()],
                         tx,
                     };
                     if let Ok(handle) = tray.spawn().await {
-                        while let Some((new_tooltip, playing)) = update_rx.next().await {
+                        while let Some((new_tooltip, playing, is_window_open)) = update_rx.next().await {
                             let _ = handle
                                 .update(|tray: &mut AthanTray| {
                                     tray.tooltip = new_tooltip;
                                     tray.playing = playing;
+                                    tray.is_window_open = is_window_open;
                                 })
                                 .await;
                         }
@@ -227,10 +233,10 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
         use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
 
         let menu = Menu::new();
-        let open_item = MenuItem::new("Open", true, None);
+        let toggle_item = MenuItem::new("Show", true, None);
         let stop_item = MenuItem::new("Stop Adhan", false, None);
         let exit_item = MenuItem::new("Exit", true, None);
-        let _ = menu.append(&open_item);
+        let _ = menu.append(&toggle_item);
         let _ = menu.append(&PredefinedMenuItem::separator());
         let _ = menu.append(&stop_item);
         let _ = menu.append(&PredefinedMenuItem::separator());
@@ -242,12 +248,13 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
 
         let tray_icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
+            .with_menu_on_left_click(false)
             .with_tooltip(initial_tooltip)
             .with_icon(icon)
             .build()
             .ok()?;
 
-        let open_id = open_item.id().clone();
+        let toggle_id = toggle_item.id().clone();
         let stop_id = stop_item.id().clone();
         let exit_id = exit_item.id().clone();
 
@@ -259,14 +266,14 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
                 ..
             } = event
             {
-                let _ = tx_click.unbounded_send(TrayEvent::Clicked);
+                let _ = tx_click.unbounded_send(TrayEvent::ToggleWindow);
             }
         }));
 
         let tx_menu = tx.clone();
         tray_icon::menu::MenuEvent::set_event_handler(Some(move |event: tray_icon::menu::MenuEvent| {
-            if event.id == open_id {
-                let _ = tx_menu.unbounded_send(TrayEvent::Clicked);
+            if event.id == toggle_id {
+                let _ = tx_menu.unbounded_send(TrayEvent::ToggleWindow);
             } else if event.id == stop_id {
                 let _ = tx_menu.unbounded_send(TrayEvent::StopAdhan);
             } else if event.id == exit_id {
@@ -274,7 +281,7 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
             }
         }));
 
-        return Some((TrayHandle { tray_icon, stop_item }, rx));
+        return Some((TrayHandle { tray_icon, stop_item, toggle_item }, rx));
     }
 
     #[allow(unreachable_code)]
@@ -282,20 +289,22 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
 }
 
 impl TrayHandle {
-    pub fn update(&self, text: &str, playing: bool) {
+    pub fn update(&self, text: &str, playing: bool, is_window_open: bool) {
         #[cfg(target_os = "linux")]
         {
-            let _ = self.update_tx.unbounded_send((text.to_string(), playing));
+            let _ = self.update_tx.unbounded_send((text.to_string(), playing, is_window_open));
         }
         #[cfg(target_os = "windows")]
         {
             let _ = self.tray_icon.set_tooltip(Some(text));
             self.stop_item.set_enabled(playing);
+            self.toggle_item.set_text(if is_window_open { "Hide" } else { "Show" });
         }
         #[cfg(not(any(target_os = "linux", target_os = "windows")))]
         {
             let _ = text;
             let _ = playing;
+            let _ = is_window_open;
         }
     }
 }
