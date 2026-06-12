@@ -300,7 +300,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         Message::Tick(now) => return app.handle_tick(now),
         Message::PlayAdhan(prayer) => {
             if let Some(audio) = &app.audio {
-                let path = if prayer == Some(Prayer::Fajr) && app.fajr_path.exists() {
+                let path = if prayer == Some(Prayer::Fajr) {
                     &app.fajr_path
                 } else {
                     &app.adhan_path
