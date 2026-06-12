@@ -185,6 +185,23 @@ impl App {
         .unwrap_or(time::UtcOffset::UTC)
     }
 
+    fn filter_numeric(s: &str, allow_decimal: bool) -> String {
+        let mut result = String::with_capacity(s.len());
+        let mut has_decimal = false;
+        
+        for c in s.chars() {
+            if c.is_ascii_digit() {
+                result.push(c);
+            } else if c == '-' && result.is_empty() {
+                result.push(c);
+            } else if allow_decimal && c == '.' && !has_decimal {
+                has_decimal = true;
+                result.push(c);
+            }
+        }
+        result
+    }
+
     fn reset_inputs(&mut self) {
         self.inputs.lat_input = self.location.coordinates.latitude.to_string();
         self.inputs.lon_input = self.location.coordinates.longitude.to_string();
@@ -349,6 +366,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.save_config();
         }
         Message::LatitudeChanged(s) => {
+            let s = App::filter_numeric(&s, true);
             app.inputs.lat_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
                 if (-90.0..=90.0).contains(&v) {
@@ -358,6 +376,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::LongitudeChanged(s) => {
+            let s = App::filter_numeric(&s, true);
             app.inputs.lon_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
                 if (-180.0..=180.0).contains(&v) {
@@ -367,6 +386,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::TimezoneChanged(s) => {
+            let s = App::filter_numeric(&s, true);
             app.inputs.tz_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
                 if (-14.0..=14.0).contains(&v) {
@@ -376,6 +396,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::ElevationChanged(s) => {
+            let s = App::filter_numeric(&s, true);
             app.inputs.elv_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
                 if (0.0..=9000.0).contains(&v) {
@@ -389,6 +410,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.location.name = s;
         }
         Message::AdjustmentChanged(prayer, s) => {
+            let s = App::filter_numeric(&s, false);
             app.set_adjustment_input(prayer, s.clone());
             if let Ok(minutes) = s.parse::<i32>()
                 && (-120..=120).contains(&minutes)
