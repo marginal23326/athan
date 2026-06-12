@@ -121,6 +121,16 @@ fn hero_section(
     let content = if app.prayer_times.is_some() {
         if let Some((prayer, ptime)) = next_p {
             let secs = time_until(ptime, now_local.time()).whole_seconds().max(0);
+            let hours = secs / 3600;
+            let mins = (secs % 3600) / 60;
+            let seconds = secs % 60;
+
+            let countdown_str = if hours > 0 {
+                format!("{:02}:{:02}:{:02}", hours, mins, seconds)
+            } else {
+                format!("{:02}:{:02}", mins, seconds)
+            };
+
             row![
                 column![
                     text("NEXT PRAYER").size(11).color(styles::TEXT_MUTED),
@@ -131,7 +141,7 @@ fn hero_section(
                 ]
                 .spacing(2),
                 Space::new().width(Fill),
-                text(format!("{:02}:{:02}:{:02}", secs / 3600, (secs % 3600) / 60, secs % 60))
+                text(countdown_str)
                     .size(46)
                     .color(styles::ACCENT)
                     .font(Font::MONOSPACE)

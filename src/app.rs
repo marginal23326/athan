@@ -185,7 +185,7 @@ impl App {
     fn filter_numeric(s: &str, allow_decimal: bool) -> String {
         let mut result = String::with_capacity(s.len());
         let mut has_decimal = false;
-        
+
         for c in s.chars() {
             if c.is_ascii_digit() {
                 result.push(c);
