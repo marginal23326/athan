@@ -2,8 +2,7 @@ use athan::core::*;
 use iced::Task;
 use std::sync::Arc;
 
-pub type TrayRxHandle =
-    Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>;
+pub type TrayRxHandle = Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SettingsTab {
@@ -179,10 +178,8 @@ impl App {
     }
 
     fn compute_local_offset(location: &Location) -> time::UtcOffset {
-        time::UtcOffset::from_whole_seconds(
-            (location.effective_timezone_offset() * 3600.0) as i32,
-        )
-        .unwrap_or(time::UtcOffset::UTC)
+        time::UtcOffset::from_whole_seconds((location.effective_timezone_offset() * 3600.0) as i32)
+            .unwrap_or(time::UtcOffset::UTC)
     }
 
     fn filter_numeric(s: &str, allow_decimal: bool) -> String {

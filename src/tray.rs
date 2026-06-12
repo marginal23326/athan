@@ -281,7 +281,14 @@ pub fn spawn(initial_tooltip: &str) -> Option<(TrayHandle, mpsc::UnboundedReceiv
             }
         }));
 
-        return Some((TrayHandle { tray_icon, stop_item, toggle_item }, rx));
+        return Some((
+            TrayHandle {
+                tray_icon,
+                stop_item,
+                toggle_item,
+            },
+            rx,
+        ));
     }
 
     #[allow(unreachable_code)]
@@ -292,7 +299,9 @@ impl TrayHandle {
     pub fn update(&self, text: &str, playing: bool, is_window_open: bool) {
         #[cfg(target_os = "linux")]
         {
-            let _ = self.update_tx.unbounded_send((text.to_string(), playing, is_window_open));
+            let _ = self
+                .update_tx
+                .unbounded_send((text.to_string(), playing, is_window_open));
         }
         #[cfg(target_os = "windows")]
         {

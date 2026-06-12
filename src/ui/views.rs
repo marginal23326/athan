@@ -166,7 +166,10 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: ti
 
                 let is_past = time < current_time && !is_next;
 
-                let faded_color = iced::Color { a: 0.4, ..styles::TEXT_MUTED };
+                let faded_color = iced::Color {
+                    a: 0.4,
+                    ..styles::TEXT_MUTED
+                };
                 let text_col = if is_next {
                     styles::ACCENT
                 } else if is_past {

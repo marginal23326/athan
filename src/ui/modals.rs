@@ -33,11 +33,7 @@ fn tab_button<'a>(text_label: &'a str, tab: SettingsTab, current_tab: SettingsTa
     .on_press(Message::SetSettingsTab(tab))
     .style(move |_theme, status| {
         let base_text_color = if is_active { styles::ACCENT } else { styles::TEXT_MUTED };
-        let bg = if is_active {
-            Some(styles::SURFACE.into())
-        } else {
-            None
-        };
+        let bg = if is_active { Some(styles::SURFACE.into()) } else { None };
 
         let mut style = iced::widget::button::Style {
             text_color: base_text_color,
@@ -45,7 +41,11 @@ fn tab_button<'a>(text_label: &'a str, tab: SettingsTab, current_tab: SettingsTa
             border: iced::Border {
                 radius: 6.0.into(),
                 width: if is_active { 1.5 } else { 0.0 },
-                color: if is_active { styles::BORDER } else { iced::Color::TRANSPARENT },
+                color: if is_active {
+                    styles::BORDER
+                } else {
+                    iced::Color::TRANSPARENT
+                },
             },
             ..Default::default()
         };
