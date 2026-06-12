@@ -140,6 +140,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
 
             #[allow(unused_mut)]
             let mut items: Vec<Element<Message>> = vec![
+                text("Geographic Settings").size(13).color(styles::TEXT_PRIMARY).into(),
                 location_grid.into(),
                 toggle_row("Daylight Saving Time (+1 hr)", app.location.dst, |_| Message::ToggleDst),
             ];
@@ -172,6 +173,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
         }
 
         SettingsTab::Calculation => column![
+            text("Calculation Methodology").size(13).color(styles::TEXT_PRIMARY),
             labeled_picker(
                 "Fajr & Isha Convention",
                 CalculationMethod::variants(),
@@ -185,7 +187,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
                 Message::AsrMethodChanged
             ),
         ]
-        .spacing(12)
+        .spacing(16)
         .into(),
 
         SettingsTab::Adjustments => column![
@@ -201,6 +203,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
         .into(),
 
         SettingsTab::Audio => column![
+            text("Audio & Notifications").size(13).color(styles::TEXT_PRIMARY),
             row![
                 text("Adhan Volume").size(13).color(styles::TEXT_MUTED),
                 Space::new().width(Fill),
@@ -210,12 +213,13 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
             ],
             iced::widget::slider(0.0..=1.0, app.volume, Message::VolumeChanged).step(0.01_f32)
         ]
-        .spacing(12)
+        .spacing(16)
         .into(),
 
         SettingsTab::Interface => {
             #[allow(unused_mut)]
             let mut items: Vec<Element<Message>> = vec![
+                text("Application Interface").size(13).color(styles::TEXT_PRIMARY).into(),
                 toggle_row("Start on login (minimized)", app.start_on_boot, |_| {
                     Message::ToggleStartOnBoot
                 }),
