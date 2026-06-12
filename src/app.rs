@@ -85,6 +85,7 @@ pub struct App {
     pub last_prayer_announced: Option<(time::Date, Prayer)>,
     pub audio: Option<crate::audio::AudioPlayer>,
     pub last_tray_state: Option<(u8, bool)>,
+    pub local_offset: time::UtcOffset,
 }
 
 impl Default for App {
@@ -131,6 +132,7 @@ impl Default for App {
             last_prayer_announced: None,
             audio: crate::audio::AudioPlayer::new(),
             last_tray_state: None,
+            local_offset: Self::compute_local_offset(&loc),
         }
     }
 }
@@ -148,6 +150,7 @@ impl App {
         self.hijri_date = data.hijri_date;
         self.qiblah = data.qiblah;
         self.error = Self::calculation_error(data.prayer_times);
+        self.local_offset = Self::compute_local_offset(&self.location);
     }
 
     fn calculation_error(prayer_times: Option<PrayerTimes>) -> Option<String> {
@@ -169,6 +172,13 @@ impl App {
             icon,
             ..Default::default()
         }
+    }
+
+    fn compute_local_offset(location: &Location) -> time::UtcOffset {
+        time::UtcOffset::from_whole_seconds(
+            (location.effective_timezone_offset() * 3600.0) as i32,
+        )
+        .unwrap_or(time::UtcOffset::UTC)
     }
 
     fn reset_inputs(&mut self) {
@@ -229,9 +239,7 @@ impl App {
         let mut out_task = Task::none();
 
         if let Some(times) = &self.prayer_times {
-            let offset =
-                time::UtcOffset::from_whole_seconds((self.location.effective_timezone_offset() * 3600.0) as i32)
-                    .unwrap_or(time::UtcOffset::UTC);
+            let offset = self.local_offset;
             let now_local = self.now.to_offset(offset);
 
             let mut latest_passed = None;
