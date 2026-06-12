@@ -86,6 +86,8 @@ pub struct App {
     pub audio: Option<crate::audio::AudioPlayer>,
     pub last_tray_state: Option<(u8, bool, bool)>,
     pub local_offset: time::UtcOffset,
+    pub adhan_path: std::path::PathBuf,
+    pub fajr_path: std::path::PathBuf,
 }
 
 impl Default for App {
@@ -133,6 +135,8 @@ impl Default for App {
             audio: crate::audio::AudioPlayer::new(),
             last_tray_state: None,
             local_offset: Self::compute_local_offset(&loc),
+            adhan_path: crate::audio::audio_dir().join("adhan.ogg"),
+            fajr_path: crate::audio::audio_dir().join("fajr.ogg"),
         }
     }
 }
@@ -282,13 +286,11 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         Message::Tick(now) => return app.handle_tick(now),
         Message::PlayAdhan(prayer) => {
             if let Some(audio) = &app.audio {
-                let mut path = crate::audio::default_adhan_path();
-                if prayer == Some(Prayer::Fajr) {
-                    let fajr_path = crate::audio::audio_dir().join("fajr.ogg");
-                    if fajr_path.exists() {
-                        path = fajr_path;
-                    }
-                }
+                let path = if prayer == Some(Prayer::Fajr) && app.fajr_path.exists() {
+                    &app.fajr_path
+                } else {
+                    &app.adhan_path
+                };
                 audio.play(path);
             }
         }

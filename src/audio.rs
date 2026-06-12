@@ -105,6 +105,3 @@ pub fn ensure_audio_files() {
     }
 }
 
-pub fn default_adhan_path() -> PathBuf {
-    audio_dir().join("adhan.ogg")
-}
