@@ -4,7 +4,7 @@ mod config;
 mod tray;
 mod ui;
 
-use app::{App, Message, update};
+use app::{App, Message, TrayRxHandle, update};
 use iced::widget::{center, mouse_area, opaque, stack};
 use iced::{Element, Subscription, Task};
 use std::sync::Arc;
@@ -13,7 +13,7 @@ use std::sync::Arc;
 struct TimerId;
 
 #[derive(Clone)]
-struct TrayReceiver(Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>);
+struct TrayReceiver(TrayRxHandle);
 
 impl std::hash::Hash for TrayReceiver {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

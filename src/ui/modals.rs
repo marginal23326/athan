@@ -34,7 +34,7 @@ fn tab_button<'a>(text_label: &'a str, tab: SettingsTab, current_tab: SettingsTa
     .style(move |_theme, status| {
         let base_text_color = if is_active { styles::ACCENT } else { styles::TEXT_MUTED };
         let bg = if is_active {
-            Some(styles::SURFACE_HIGHLIGHT.into())
+            Some(styles::SURFACE.into())
         } else {
             None
         };
@@ -44,7 +44,8 @@ fn tab_button<'a>(text_label: &'a str, tab: SettingsTab, current_tab: SettingsTa
             background: bg,
             border: iced::Border {
                 radius: 6.0.into(),
-                ..Default::default()
+                width: if is_active { 1.5 } else { 0.0 },
+                color: if is_active { styles::BORDER } else { iced::Color::TRANSPARENT },
             },
             ..Default::default()
         };

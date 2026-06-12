@@ -2,6 +2,9 @@ use athan::core::*;
 use iced::Task;
 use std::sync::Arc;
 
+pub type TrayRxHandle =
+    Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SettingsTab {
     #[default]
@@ -76,8 +79,7 @@ pub struct App {
     pub error: Option<String>,
     pub window_id: Option<iced::window::Id>,
     pub tray: Option<crate::tray::TrayHandle>,
-    pub tray_rx:
-        Option<Arc<std::sync::Mutex<Option<futures_channel::mpsc::UnboundedReceiver<crate::tray::TrayEvent>>>>>,
+    pub tray_rx: Option<TrayRxHandle>,
     pub start_on_boot: bool,
     pub volume: f32,
     pub last_prayer_announced: Option<(time::Date, Prayer)>,

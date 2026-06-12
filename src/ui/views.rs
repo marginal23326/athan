@@ -18,7 +18,7 @@ pub fn main_view(app: &App) -> Element<'_, Message> {
 
     let top_bar = row![
         column![
-            text(&app.location.name).size(18).color(styles::TEXT_PRIMARY),
+            text(&app.location.name).size(20).color(styles::TEXT_PRIMARY),
             hijri_or_date_label(app, now_local)
         ]
         .spacing(2),
@@ -167,10 +167,11 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: ti
 
                 let is_past = time < current_time && !is_next;
 
+                let faded_color = iced::Color { a: 0.4, ..styles::TEXT_MUTED };
                 let text_col = if is_next {
                     styles::ACCENT
                 } else if is_past {
-                    iced::Color::from_rgba(styles::TEXT_MUTED.r, styles::TEXT_MUTED.g, styles::TEXT_MUTED.b, 0.5)
+                    faded_color
                 } else {
                     styles::TEXT_PRIMARY
                 };
@@ -183,12 +184,7 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: ti
                             Element::from(text(prayer.arabic_name()).size(14).color(if is_next {
                                 styles::ACCENT
                             } else if is_past {
-                                iced::Color::from_rgba(
-                                    styles::TEXT_MUTED.r,
-                                    styles::TEXT_MUTED.g,
-                                    styles::TEXT_MUTED.b,
-                                    0.5,
-                                )
+                                faded_color
                             } else {
                                 styles::TEXT_MUTED
                             }))
