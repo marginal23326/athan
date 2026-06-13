@@ -46,6 +46,7 @@ pub enum Message {
     PlayAdhan(Option<Prayer>),
     StopAdhan,
     VolumeChanged(f32),
+    WindowMoved(i32, i32),
 }
 
 pub struct SettingsState {
@@ -87,6 +88,7 @@ pub struct App {
     pub local_offset: time::UtcOffset,
     pub adhan_path: std::path::PathBuf,
     pub fajr_path: std::path::PathBuf,
+    pub window_pos: Option<(i32, i32)>,
 }
 
 impl Default for App {
@@ -136,6 +138,7 @@ impl Default for App {
             local_offset: Self::compute_local_offset(&loc),
             adhan_path: crate::audio::audio_dir().join("adhan.ogg"),
             fajr_path: crate::audio::audio_dir().join("fajr.ogg"),
+            window_pos: None,
         }
     }
 }
@@ -166,12 +169,14 @@ impl App {
         self.inputs.adjustment_inputs[prayer.index()] = value;
     }
 
-    pub fn main_window_settings() -> iced::window::Settings {
+    pub fn main_window_settings(pos: Option<(i32, i32)>) -> iced::window::Settings {
         let icon = iced::window::icon::from_rgba(crate::tray::cached_icon_rgba_64().to_vec(), 64, 64).ok();
 
         iced::window::Settings {
             size: iced::Size::new(450.0, 640.0),
-            position: iced::window::Position::Centered,
+            position: pos.map_or(iced::window::Position::Centered, |(x, y)| {
+                iced::window::Position::Specific(iced::Point::new(x as f32, y as f32))
+            }),
             icon,
             ..Default::default()
         }
@@ -216,6 +221,7 @@ impl App {
         self.show_arabic = config.show_arabic;
         self.use_24h = config.use_24h;
         self.volume = config.volume;
+        self.window_pos = config.window_pos;
         if let Some(audio) = &self.audio {
             audio.set_volume(self.volume);
         }
@@ -236,6 +242,7 @@ impl App {
             show_arabic: self.show_arabic,
             use_24h: self.use_24h,
             volume: self.volume,
+            window_pos: self.window_pos,
             #[cfg(feature = "hijri")]
             show_hijri: self.show_hijri,
         }
@@ -319,8 +326,12 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 audio.set_volume(v);
             }
         }
+        Message::WindowMoved(x, y) => {
+            app.window_pos = Some((x, y));
+        }
         Message::HideToTray(id) => {
             if app.window_id == Some(id) {
+                app.save_config();
                 return iced::window::close(id);
             }
         }
@@ -338,7 +349,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 return iced::window::close(id);
             } else {
                 let now = app.now;
-                let (id, task) = iced::window::open(App::main_window_settings());
+                let (id, task) = iced::window::open(App::main_window_settings(app.window_pos));
                 app.window_id = Some(id);
                 return task.map(move |_| Message::Tick(now));
             }

@@ -12,6 +12,8 @@ pub struct Config {
     pub volume: f32,
     #[cfg(feature = "hijri")]
     pub show_hijri: bool,
+    #[serde(default)]
+    pub window_pos: Option<(i32, i32)>,
 }
 
 fn config_path() -> Option<std::path::PathBuf> {

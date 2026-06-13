@@ -56,14 +56,16 @@ fn view(app: &App, id: iced::window::Id) -> Element<'_, Message> {
 fn subscription(app: &App) -> Subscription<Message> {
     let tick = iced::Subscription::run_with(TimerId, |_| {
         let (mut tx, rx) = futures_channel::mpsc::channel(1);
-        std::thread::spawn(move || loop {
-            let now = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default();
-            let millis_to_next = 1000 - (now.as_millis() % 1000) as u64;
-            std::thread::sleep(std::time::Duration::from_millis(millis_to_next));
-            if tx.try_send(()).is_err() && tx.is_closed() {
-                break;
+        std::thread::spawn(move || {
+            loop {
+                let now = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default();
+                let millis_to_next = 1000 - (now.as_millis() % 1000) as u64;
+                std::thread::sleep(std::time::Duration::from_millis(millis_to_next));
+                if tx.try_send(()).is_err() && tx.is_closed() {
+                    break;
+                }
             }
         });
         iced::futures::stream::unfold(rx, |mut rx| async move {
@@ -76,6 +78,7 @@ fn subscription(app: &App) -> Subscription<Message> {
     let events = iced::event::listen_with(|event, status, id| match event {
         iced::Event::Window(iced::window::Event::CloseRequested) => Some(Message::HideToTray(id)),
         iced::Event::Window(iced::window::Event::Closed) => Some(Message::WindowClosed(id)),
+        iced::Event::Window(iced::window::Event::Moved(pos)) => Some(Message::WindowMoved(pos.x as i32, pos.y as i32)),
         iced::Event::Keyboard(iced::keyboard::Event::KeyPressed { key, modifiers, .. })
             if status == iced::event::Status::Ignored =>
         {
@@ -148,7 +151,7 @@ fn new() -> (App, Task<Message>) {
     if minimized {
         (app, Task::done(Message::Tick(time::OffsetDateTime::now_utc())))
     } else {
-        let (id, task) = iced::window::open(app::App::main_window_settings());
+        let (id, task) = iced::window::open(app::App::main_window_settings(app.window_pos));
         app.window_id = Some(id);
         (app, task.map(|_| Message::Tick(time::OffsetDateTime::now_utc())))
     }
