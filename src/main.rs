@@ -56,12 +56,14 @@ fn view(app: &App, id: iced::window::Id) -> Element<'_, Message> {
 fn subscription(app: &App) -> Subscription<Message> {
     let tick = iced::Subscription::run_with(TimerId, |_| {
         let (mut tx, rx) = futures_channel::mpsc::channel(1);
-        std::thread::spawn(move || {
-            loop {
-                std::thread::sleep(std::time::Duration::from_millis(500));
-                if tx.try_send(()).is_err() && tx.is_closed() {
-                    break;
-                }
+        std::thread::spawn(move || loop {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default();
+            let millis_to_next = 1000 - (now.as_millis() % 1000) as u64;
+            std::thread::sleep(std::time::Duration::from_millis(millis_to_next));
+            if tx.try_send(()).is_err() && tx.is_closed() {
+                break;
             }
         });
         iced::futures::stream::unfold(rx, |mut rx| async move {
