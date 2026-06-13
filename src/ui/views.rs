@@ -119,38 +119,36 @@ fn hero_section(
     };
 
     let content = if app.prayer_times.is_some() {
-        if let Some((prayer, ptime)) = next_p {
-            let secs = time_until(ptime, now_local.time()).whole_seconds().max(0);
-            let hours = secs / 3600;
-            let mins = (secs % 3600) / 60;
-            let seconds = secs % 60;
+        let (prayer, ptime) = next_p.unwrap_or((Prayer::Fajr, time::Time::MIDNIGHT));
 
-            let countdown_str = if hours > 0 {
-                format!("{:02}:{:02}:{:02}", hours, mins, seconds)
-            } else {
-                format!("{:02}:{:02}", mins, seconds)
-            };
+        let secs = time_until(ptime, now_local.time()).whole_seconds().max(0);
+        let hours = secs / 3600;
+        let mins = (secs % 3600) / 60;
+        let seconds = secs % 60;
 
-            row![
-                column![
-                    text("NEXT PRAYER").size(11).color(styles::TEXT_MUTED),
-                    text(prayer.uppercase_name()).size(30).color(styles::TEXT_PRIMARY),
-                    text(format_time(ptime, app.use_24h)).size(15).color(styles::TEXT_MUTED),
-                    Space::new().height(8),
-                    play_btn,
-                ]
-                .spacing(2),
-                Space::new().width(Fill),
-                text(countdown_str)
-                    .size(46)
-                    .color(styles::ACCENT)
-                    .font(Font::MONOSPACE)
-                    .wrapping(Wrapping::WordOrGlyph)
-            ]
-            .align_y(Alignment::Center)
+        let countdown_str = if hours > 0 {
+            format!("{:02}:{:02}:{:02}", hours, mins, seconds)
         } else {
-            row![text("No upcoming prayer").color(styles::TEXT_MUTED)]
-        }
+            format!("{:02}:{:02}", mins, seconds)
+        };
+
+        row![
+            column![
+                text("NEXT PRAYER").size(11).color(styles::TEXT_MUTED),
+                text(prayer.uppercase_name()).size(30).color(styles::TEXT_PRIMARY),
+                text(format_time(ptime, app.use_24h)).size(15).color(styles::TEXT_MUTED),
+                Space::new().height(8),
+                play_btn,
+            ]
+            .spacing(2),
+            Space::new().width(Fill),
+            text(countdown_str)
+                .size(46)
+                .color(styles::ACCENT)
+                .font(Font::MONOSPACE)
+                .wrapping(Wrapping::WordOrGlyph)
+        ]
+        .align_y(Alignment::Center)
     } else {
         row![text("Cannot compute").color(styles::ERROR)]
     };

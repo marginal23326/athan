@@ -219,7 +219,10 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
         SettingsTab::Interface => {
             #[allow(unused_mut)]
             let mut items: Vec<Element<Message>> = vec![
-                text("Application Interface").size(13).color(styles::TEXT_PRIMARY).into(),
+                text("Application Interface")
+                    .size(13)
+                    .color(styles::TEXT_PRIMARY)
+                    .into(),
                 toggle_row("Start on login (minimized)", app.start_on_boot, |_| {
                     Message::ToggleStartOnBoot
                 }),
