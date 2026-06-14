@@ -94,10 +94,6 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
     let active_content: Element<'_, Message> = match app.inputs.active_tab {
         SettingsTab::Location => {
             let is_name_invalid = app.inputs.loc_name_input.trim().is_empty();
-            let is_tz_invalid = !is_valid_float(&app.inputs.tz_input, TZ_RANGE);
-            let is_lat_invalid = !is_valid_float(&app.inputs.lat_input, LAT_RANGE);
-            let is_lon_invalid = !is_valid_float(&app.inputs.lon_input, LON_RANGE);
-            let is_elv_invalid = !is_valid_float(&app.inputs.elv_input, ELV_RANGE);
 
             let location_grid = column![
                 row![
@@ -110,7 +106,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
                     labeled_input(
                         "UTC Offset (Hrs)",
                         &app.inputs.tz_input,
-                        is_tz_invalid,
+                        !is_valid_float(&app.inputs.tz_input, TZ_RANGE),
                         Message::TimezoneChanged
                     ),
                 ]
@@ -119,13 +115,13 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
                     labeled_input(
                         "Latitude",
                         &app.inputs.lat_input,
-                        is_lat_invalid,
+                        !is_valid_float(&app.inputs.lat_input, LAT_RANGE),
                         Message::LatitudeChanged
                     ),
                     labeled_input(
                         "Longitude",
                         &app.inputs.lon_input,
-                        is_lon_invalid,
+                        !is_valid_float(&app.inputs.lon_input, LON_RANGE),
                         Message::LongitudeChanged
                     ),
                 ]
@@ -133,7 +129,7 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
                 labeled_input(
                     "Elevation (m)",
                     &app.inputs.elv_input,
-                    is_elv_invalid,
+                    !is_valid_float(&app.inputs.elv_input, ELV_RANGE),
                     Message::ElevationChanged
                 )
             ]
