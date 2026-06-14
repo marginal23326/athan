@@ -1,5 +1,4 @@
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player};
-use std::fs::File;
 use std::path::{Path, PathBuf};
 
 pub struct AudioPlayer {
@@ -19,8 +18,8 @@ impl AudioPlayer {
     }
 
     pub fn play(&self, path: impl AsRef<Path>) {
-        if let Ok(file) = File::open(path)
-            && let Ok(source) = Decoder::try_from(std::io::BufReader::new(file))
+        if let Ok(data) = std::fs::read(path)
+            && let Ok(source) = Decoder::try_from(std::io::Cursor::new(data))
         {
             self.player.clear();
             self.player.append(source);
