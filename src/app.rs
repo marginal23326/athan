@@ -368,6 +368,8 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                         SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
                     }
                 }
+
+                return Task::done(Message::Tick(time::OffsetDateTime::now_utc()));
             }
         }
         Message::TrayEvent(crate::tray::TrayEvent::ToggleWindow) => {
