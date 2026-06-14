@@ -349,7 +349,6 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         }
         Message::HideToTray(id) => {
             if app.window_id == Some(id) {
-                app.save_config();
                 return iced::window::close(id);
             }
         }
@@ -376,7 +375,6 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         }
         Message::TrayEvent(crate::tray::TrayEvent::ToggleWindow) => {
             if let Some(id) = app.window_id {
-                app.save_config();
                 return iced::window::close(id);
             } else {
                 let now = app.now;
