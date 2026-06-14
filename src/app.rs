@@ -353,6 +353,17 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 app.settings_open = false;
                 app.reset_inputs();
                 app.save_config();
+
+                #[cfg(target_os = "windows")]
+                {
+                    unsafe extern "system" {
+                        fn GetCurrentProcess() -> isize;
+                        fn SetProcessWorkingSetSize(hProcess: isize, min: usize, max: usize) -> i32;
+                    }
+                    unsafe {
+                        SetProcessWorkingSetSize(GetCurrentProcess(), usize::MAX, usize::MAX);
+                    }
+                }
             }
         }
         Message::TrayEvent(crate::tray::TrayEvent::ToggleWindow) => {
