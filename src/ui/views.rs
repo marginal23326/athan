@@ -166,86 +166,83 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: ti
 
         let prayers = times.as_array();
 
-        let rows = prayers
-            .iter()
-            .enumerate()
-            .map(|(i, &(prayer, time))| {
-                let is_next = next_prayer_enum == Some(prayer);
+        let rows = prayers.iter().enumerate().map(|(i, &(prayer, time))| {
+            let is_next = next_prayer_enum == Some(prayer);
 
-                let is_past = time < current_time && !is_next;
+            let is_past = time < current_time && !is_next;
 
-                let faded_color = iced::Color {
-                    a: 0.4,
-                    ..styles::TEXT_MUTED
-                };
-                let text_col = if is_next {
-                    styles::ACCENT
-                } else if is_past {
-                    faded_color
-                } else {
-                    styles::TEXT_PRIMARY
-                };
+            let faded_color = iced::Color {
+                a: 0.4,
+                ..styles::TEXT_MUTED
+            };
+            let text_col = if is_next {
+                styles::ACCENT
+            } else if is_past {
+                faded_color
+            } else {
+                styles::TEXT_PRIMARY
+            };
 
-                let row_content = container(
-                    row![
-                        text(prayer.name()).size(15).color(text_col),
-                        Space::new().width(Fill),
-                        if app.show_arabic && prayer.name() != prayer.arabic_name() {
-                            Element::from(text(prayer.arabic_name()).size(14).color(if is_next {
-                                styles::ACCENT
-                            } else if is_past {
-                                faded_color
-                            } else {
-                                styles::TEXT_MUTED
-                            }))
+            let row_content = container(
+                row![
+                    text(prayer.name()).size(15).color(text_col),
+                    Space::new().width(Fill),
+                    if app.show_arabic && prayer.name() != prayer.arabic_name() {
+                        Element::from(text(prayer.arabic_name()).size(14).color(if is_next {
+                            styles::ACCENT
+                        } else if is_past {
+                            faded_color
                         } else {
-                            Element::from(space())
-                        },
-                        Space::new().width(12),
-                        text(format_time(time, app.use_24h))
-                            .size(15)
-                            .color(text_col)
-                            .font(Font::MONOSPACE),
-                    ]
-                    .align_y(Alignment::Center)
-                    .padding([10, 20]),
-                )
-                .style(move |_| iced::widget::container::Style {
-                    background: Some(
-                        if is_next {
-                            styles::ACCENT_MUTED
-                        } else {
-                            iced::Color::TRANSPARENT
-                        }
-                        .into(),
-                    ),
-                    border: if is_next {
-                        iced::Border {
-                            color: iced::Color::TRANSPARENT,
-                            width: 0.0,
-                            radius: 16.0.into(),
-                        }
+                            styles::TEXT_MUTED
+                        }))
                     } else {
-                        iced::Border::default()
+                        Element::from(space())
                     },
-                    ..Default::default()
-                });
-
-                if i < prayers.len() - 1 {
-                    column![
-                        row_content,
-                        rule::horizontal(1).style(|_| rule::Style {
-                            color: styles::BORDER,
-                            radius: 0.0.into(),
-                            fill_mode: rule::FillMode::Full,
-                            snap: true
-                        })
-                    ]
-                    .into()
+                    Space::new().width(12),
+                    text(format_time(time, app.use_24h))
+                        .size(15)
+                        .color(text_col)
+                        .font(Font::MONOSPACE),
+                ]
+                .align_y(Alignment::Center)
+                .padding([10, 20]),
+            )
+            .style(move |_| iced::widget::container::Style {
+                background: Some(
+                    if is_next {
+                        styles::ACCENT_MUTED
+                    } else {
+                        iced::Color::TRANSPARENT
+                    }
+                    .into(),
+                ),
+                border: if is_next {
+                    iced::Border {
+                        color: iced::Color::TRANSPARENT,
+                        width: 0.0,
+                        radius: 16.0.into(),
+                    }
                 } else {
-                    row_content.into()
-                }
+                    iced::Border::default()
+                },
+                ..Default::default()
             });
+
+            if i < prayers.len() - 1 {
+                column![
+                    row_content,
+                    rule::horizontal(1).style(|_| rule::Style {
+                        color: styles::BORDER,
+                        radius: 0.0.into(),
+                        fill_mode: rule::FillMode::Full,
+                        snap: true
+                    })
+                ]
+                .into()
+            } else {
+                row_content.into()
+            }
+        });
 
         container(iced::widget::Column::with_children(rows))
             .style(styles::surface_card)

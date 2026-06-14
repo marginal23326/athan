@@ -7,9 +7,7 @@ use iced::{Alignment, Element, Fill};
 use std::borrow::Borrow;
 
 pub fn can_be_float(s: &str) -> bool {
-    s.is_empty()
-        || s.parse::<f64>().is_ok()
-        || matches!(s, "-" | "+" | "." | "-." | "+.")
+    s.is_empty() || s.parse::<f64>().is_ok() || matches!(s, "-" | "+" | "." | "-." | "+.")
 }
 
 pub fn labeled_input<'a>(
@@ -81,15 +79,11 @@ pub fn adjustment_input<'a>(inputs: &'a [String; Prayer::COUNT], prayer: Prayer)
 }
 
 pub fn adjustment_grid(inputs: &[String; Prayer::COUNT]) -> Element<'_, Message> {
-    let rows = Prayer::all()
-        .chunks(2)
-        .map(|chunk| {
-            iced::widget::Row::with_children(
-                chunk.iter().copied().map(|prayer| adjustment_input(inputs, prayer)),
-            )
+    let rows = Prayer::all().chunks(2).map(|chunk| {
+        iced::widget::Row::with_children(chunk.iter().copied().map(|prayer| adjustment_input(inputs, prayer)))
             .spacing(12)
             .into()
-        });
+    });
 
     iced::widget::Column::with_children(rows).spacing(12).into()
 }
