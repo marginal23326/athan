@@ -79,22 +79,16 @@ pub fn ensure_audio_files() {
         return;
     }
 
-    let sources = std::env::current_dir()
-        .ok()
-        .map(|p| p.join("data").join("audio"))
-        .into_iter()
-        .chain(
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|p| p.join("data").join("audio"))),
-        );
+    let sources = [
+        std::env::current_dir().ok().map(|p| p.join("data").join("audio")),
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.join("data").join("audio"))),
+    ];
 
-    for src in sources {
-        if src.join("adhan.ogg").exists() {
-            let _ = std::fs::copy(src.join("adhan.ogg"), dest.join("adhan.ogg"));
-            if src.join("fajr.ogg").exists() {
-                let _ = std::fs::copy(src.join("fajr.ogg"), dest.join("fajr.ogg"));
-            }
+    for src in sources.into_iter().flatten() {
+        if std::fs::copy(src.join("adhan.ogg"), dest.join("adhan.ogg")).is_ok() {
+            let _ = std::fs::copy(src.join("fajr.ogg"), dest.join("fajr.ogg"));
             return;
         }
     }
