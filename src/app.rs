@@ -283,11 +283,15 @@ impl App {
                 }
             }
 
-            if let Some(prayer) = latest_passed {
+            if self.last_prayer_announced.is_none() {
+                self.last_prayer_announced = Some(
+                    latest_passed
+                        .map(|p| (current_date, p))
+                        .unwrap_or_else(|| (current_date.previous_day().unwrap_or(current_date), Prayer::Isha)),
+                );
+            } else if let Some(prayer) = latest_passed {
                 let key = (current_date, prayer);
-                if self.last_prayer_announced.is_none() {
-                    self.last_prayer_announced = Some(key);
-                } else if self.last_prayer_announced != Some(key) {
+                if self.last_prayer_announced != Some(key) {
                     self.last_prayer_announced = Some(key);
                     out_task = Task::done(Message::PlayAdhan(Some(prayer)));
                 }
