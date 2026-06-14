@@ -127,10 +127,10 @@ impl From<AsrArg> for AsrMethod {
 pub fn run() -> Result<(), CliError> {
     let cli: Cli = argp::parse_args_or_exit(argp::DEFAULT);
 
-    let location = {
+    let location = 'loc: {
         #[cfg(feature = "detect")]
         if cli.detect {
-            match detect_location() {
+            break 'loc match detect_location() {
                 Ok(detected) => Location {
                     name: detected.name,
                     coordinates: Coordinates::new(cli.lat.unwrap_or(detected.lat), cli.lon.unwrap_or(detected.lon)),
@@ -142,33 +142,22 @@ pub fn run() -> Result<(), CliError> {
                     eprintln!("Warning: could not detect location from IP ({e}). Falling back to Makkah.");
                     Location::default()
                 }
-            }
-        } else {
-            let (lat, lon, tz) = match (cli.lat, cli.lon, cli.tz) {
-                (Some(lat), Some(lon), Some(tz)) => (lat, lon, tz),
-                _ => return Err(CliError::Usage("--lat, --lon, and --tz are required (or use --detect)")),
             };
-            Location {
-                name: cli.location,
-                coordinates: Coordinates::new(lat, lon),
-                timezone_offset: tz,
-                dst: cli.dst,
-                elevation: cli.elevation.unwrap_or(0.0),
-            }
         }
-        #[cfg(not(feature = "detect"))]
-        {
-            let (lat, lon, tz) = match (cli.lat, cli.lon, cli.tz) {
-                (Some(lat), Some(lon), Some(tz)) => (lat, lon, tz),
-                _ => return Err(CliError::Usage("--lat, --lon, and --tz are required")),
-            };
-            Location {
-                name: cli.location,
-                coordinates: Coordinates::new(lat, lon),
-                timezone_offset: tz,
-                dst: cli.dst,
-                elevation: cli.elevation.unwrap_or(0.0),
-            }
+
+        let (Some(lat), Some(lon), Some(tz)) = (cli.lat, cli.lon, cli.tz) else {
+            #[cfg(feature = "detect")]
+            return Err(CliError::Usage("--lat, --lon, and --tz are required (or use --detect)"));
+            #[cfg(not(feature = "detect"))]
+            return Err(CliError::Usage("--lat, --lon, and --tz are required"));
+        };
+
+        Location {
+            name: cli.location,
+            coordinates: Coordinates::new(lat, lon),
+            timezone_offset: tz,
+            dst: cli.dst,
+            elevation: cli.elevation.unwrap_or(0.0),
         }
     };
 
