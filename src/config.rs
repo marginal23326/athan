@@ -32,7 +32,10 @@ pub fn save(config: &Config) {
             let _ = std::fs::create_dir_all(parent);
         }
         if let Ok(content) = serde_json::to_string_pretty(config) {
-            let _ = std::fs::write(path, content);
+            let temp_path = path.with_extension("tmp");
+            if std::fs::write(&temp_path, &content).is_ok() {
+                let _ = std::fs::rename(temp_path, path);
+            }
         }
     }
 }
