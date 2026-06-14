@@ -166,7 +166,7 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: ti
 
         let prayers = times.as_array();
 
-        let rows: Vec<Element<Message>> = prayers
+        let rows = prayers
             .iter()
             .enumerate()
             .map(|(i, &(prayer, time))| {
@@ -245,8 +245,7 @@ fn prayer_list(app: &App, next_p: Option<(Prayer, time::Time)>, current_time: ti
                 } else {
                     row_content.into()
                 }
-            })
-            .collect();
+            });
 
         container(iced::widget::Column::with_children(rows))
             .style(styles::surface_card)

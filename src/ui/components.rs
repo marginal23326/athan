@@ -81,18 +81,15 @@ pub fn adjustment_input<'a>(inputs: &'a [String; Prayer::COUNT], prayer: Prayer)
 }
 
 pub fn adjustment_grid(inputs: &[String; Prayer::COUNT]) -> Element<'_, Message> {
-    let rows: Vec<Element<Message>> = Prayer::all()
+    let rows = Prayer::all()
         .chunks(2)
         .map(|chunk| {
-            let elems: Vec<Element<Message>> = chunk
-                .iter()
-                .copied()
-                .map(|prayer| adjustment_input(inputs, prayer))
-                .collect();
-
-            iced::widget::Row::with_children(elems).spacing(12).into()
-        })
-        .collect();
+            iced::widget::Row::with_children(
+                chunk.iter().copied().map(|prayer| adjustment_input(inputs, prayer)),
+            )
+            .spacing(12)
+            .into()
+        });
 
     iced::widget::Column::with_children(rows).spacing(12).into()
 }
