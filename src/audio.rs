@@ -75,7 +75,7 @@ pub fn audio_dir() -> PathBuf {
 
 pub fn ensure_audio_files() {
     let dest = audio_dir();
-    if dest.join("adhan.ogg").exists() {
+    if dest.join("adhan.ogg").exists() && dest.join("fajr.ogg").exists() {
         return;
     }
 
