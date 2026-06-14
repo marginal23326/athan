@@ -20,7 +20,7 @@ impl AudioPlayer {
 
     pub fn play(&self, path: impl AsRef<Path>) {
         if let Ok(file) = File::open(path)
-            && let Ok(source) = Decoder::try_from(file)
+            && let Ok(source) = Decoder::try_from(std::io::BufReader::new(file))
         {
             self.player.clear();
             self.player.append(source);
