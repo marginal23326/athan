@@ -73,7 +73,15 @@ fn subscription(app: &App) -> Subscription<Message> {
                 } else {
                     60_000 - (now.as_millis() % 60_000) as u64
                 };
-                std::thread::sleep(std::time::Duration::from_millis(millis_to_next + 1));
+
+                let target = std::time::Instant::now() + std::time::Duration::from_millis(millis_to_next + 1);
+                while std::time::Instant::now() < target {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    if tx.is_closed() {
+                        return;
+                    }
+                }
+
                 if tx.try_send(()).is_err() && tx.is_closed() {
                     break;
                 }
