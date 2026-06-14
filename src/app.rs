@@ -293,7 +293,9 @@ impl App {
                 let key = (current_date, prayer);
                 if self.last_prayer_announced != Some(key) {
                     self.last_prayer_announced = Some(key);
-                    out_task = Task::done(Message::PlayAdhan(Some(prayer)));
+                    if prayer != Prayer::Sunrise {
+                        out_task = Task::done(Message::PlayAdhan(Some(prayer)));
+                    }
                 }
             }
 
