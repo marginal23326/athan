@@ -1,5 +1,10 @@
 use std::fmt;
 
+pub const LAT_RANGE: std::ops::RangeInclusive<f64> = -90.0..=90.0;
+pub const LON_RANGE: std::ops::RangeInclusive<f64> = -180.0..=180.0;
+pub const TZ_RANGE: std::ops::RangeInclusive<f64> = -14.0..=14.0;
+pub const ELV_RANGE: std::ops::RangeInclusive<f64> = 0.0..=9000.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum CalculationMethod {
@@ -213,8 +218,8 @@ impl Coordinates {
     pub fn is_valid(&self) -> bool {
         self.latitude.is_finite()
             && self.longitude.is_finite()
-            && (-90.0..=90.0).contains(&self.latitude)
-            && (-180.0..=180.0).contains(&self.longitude)
+            && LAT_RANGE.contains(&self.latitude)
+            && LON_RANGE.contains(&self.longitude)
     }
 }
 

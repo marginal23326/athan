@@ -6,8 +6,10 @@ use iced::widget::{Space, column, pick_list, row, text, text_input, toggler};
 use iced::{Alignment, Element, Fill};
 use std::borrow::Borrow;
 
-pub fn can_be_float(s: &str) -> bool {
-    s.is_empty() || s.parse::<f64>().is_ok() || matches!(s, "-" | "+" | "." | "-." | "+.")
+pub fn is_valid_float(s: &str, range: std::ops::RangeInclusive<f64>) -> bool {
+    s.is_empty()
+        || matches!(s, "-" | "+" | "." | "-." | "+.")
+        || s.parse::<f64>().map_or(false, |v| range.contains(&v))
 }
 
 pub fn labeled_input<'a>(

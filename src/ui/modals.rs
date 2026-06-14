@@ -1,5 +1,6 @@
 use crate::app::{App, Message, SettingsTab};
-use crate::ui::components::{adjustment_grid, can_be_float, labeled_input, labeled_picker, toggle_row};
+use athan::core::{ELV_RANGE, LAT_RANGE, LON_RANGE, TZ_RANGE};
+use crate::ui::components::{adjustment_grid, is_valid_float, labeled_input, labeled_picker, toggle_row};
 use crate::ui::styles;
 use athan::core::*;
 
@@ -93,10 +94,10 @@ pub fn settings_modal(app: &App) -> Element<'_, Message> {
     let active_content: Element<'_, Message> = match app.inputs.active_tab {
         SettingsTab::Location => {
             let is_name_invalid = app.inputs.loc_name_input.trim().is_empty();
-            let is_tz_invalid = !can_be_float(&app.inputs.tz_input);
-            let is_lat_invalid = !can_be_float(&app.inputs.lat_input);
-            let is_lon_invalid = !can_be_float(&app.inputs.lon_input);
-            let is_elv_invalid = !can_be_float(&app.inputs.elv_input);
+            let is_tz_invalid = !is_valid_float(&app.inputs.tz_input, TZ_RANGE);
+            let is_lat_invalid = !is_valid_float(&app.inputs.lat_input, LAT_RANGE);
+            let is_lon_invalid = !is_valid_float(&app.inputs.lon_input, LON_RANGE);
+            let is_elv_invalid = !is_valid_float(&app.inputs.elv_input, ELV_RANGE);
 
             let location_grid = column![
                 row![

@@ -407,7 +407,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             let s = App::filter_numeric(&s, true);
             app.inputs.lat_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                if (-90.0..=90.0).contains(&v) {
+                if LAT_RANGE.contains(&v) {
                     app.location.coordinates.latitude = v;
                     app.recalculate();
                 }
@@ -418,7 +418,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             let s = App::filter_numeric(&s, true);
             app.inputs.lon_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                if (-180.0..=180.0).contains(&v) {
+                if LON_RANGE.contains(&v) {
                     app.location.coordinates.longitude = v;
                     app.recalculate();
                 }
@@ -429,7 +429,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             let s = App::filter_numeric(&s, true);
             app.inputs.tz_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                if (-14.0..=14.0).contains(&v) {
+                if TZ_RANGE.contains(&v) {
                     app.location.timezone_offset = v;
                     app.recalculate();
                 }
@@ -440,7 +440,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             let s = App::filter_numeric(&s, true);
             app.inputs.elv_input = s.clone();
             if let Ok(v) = s.parse::<f64>() {
-                if (0.0..=9000.0).contains(&v) {
+                if ELV_RANGE.contains(&v) {
                     app.location.elevation = v;
                     app.recalculate();
                 }
