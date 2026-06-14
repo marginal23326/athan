@@ -27,7 +27,7 @@ pub struct TrayHandle {
 #[cfg(target_os = "linux")]
 fn make_icon() -> ksni::Icon {
     let size = 64;
-    let rgba = cached_icon_rgba_64().to_vec();
+    let rgba = cached_icon_rgba_64();
     let mut argb = Vec::with_capacity(rgba.len());
     for chunk in rgba.chunks_exact(4) {
         argb.push(chunk[3]); // Alpha
