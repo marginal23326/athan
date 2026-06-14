@@ -175,7 +175,7 @@ impl App {
         iced::window::Settings {
             size: iced::Size::new(450.0, 640.0),
             position: pos
-                .filter(|&(x, y)| x >= 0 && y >= 0 && x < 8000 && y < 4000)
+                .filter(|&(x, y)| x >= -8000 && y >= -8000 && x < 8000 && y < 4000)
                 .map_or(iced::window::Position::Centered, |(x, y)| {
                     iced::window::Position::Specific(iced::Point::new(x as f32, y as f32))
                 }),
