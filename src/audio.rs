@@ -28,10 +28,6 @@ impl AudioPlayer {
         }
     }
 
-    pub fn stop(&self) {
-        self.player.clear();
-    }
-
     pub fn set_volume(&self, volume: f32) {
         self.player.set_volume(volume);
     }

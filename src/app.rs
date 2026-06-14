@@ -133,7 +133,7 @@ impl Default for App {
             start_on_boot: crate::config::is_autostart(),
             volume: 0.5,
             last_prayer_announced: None,
-            audio: crate::audio::AudioPlayer::new(),
+            audio: None,
             last_tray_state: None,
             local_offset: Self::compute_local_offset(&loc),
             adhan_path: crate::audio::audio_dir().join("adhan.ogg"),
@@ -263,6 +263,15 @@ impl App {
 
         let mut out_task = Task::none();
 
+        let mut playing = false;
+        if let Some(audio) = &self.audio {
+            if audio.is_playing() {
+                playing = true;
+            } else {
+                self.audio = None;
+            }
+        }
+
         if let Some(times) = &self.prayer_times {
             let offset = self.local_offset;
             let now_local = self.now.to_offset(offset);
@@ -285,7 +294,6 @@ impl App {
             }
 
             if let Some(tray) = &self.tray {
-                let playing = self.audio.as_ref().map(|a| a.is_playing()).unwrap_or(false);
                 let current_minute = now_local.time().minute();
                 let is_open = self.window_id.is_some();
 
@@ -306,6 +314,12 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
     match msg {
         Message::Tick(now) => return app.handle_tick(now),
         Message::PlayAdhan(prayer) => {
+            if app.audio.is_none() {
+                app.audio = crate::audio::AudioPlayer::new();
+                if let Some(audio) = &app.audio {
+                    audio.set_volume(app.volume);
+                }
+            }
             if let Some(audio) = &app.audio {
                 let path = if prayer == Some(Prayer::Fajr) {
                     &app.fajr_path
@@ -316,9 +330,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             }
         }
         Message::StopAdhan => {
-            if let Some(audio) = &app.audio {
-                audio.stop();
-            }
+            app.audio = None;
         }
         Message::VolumeChanged(v) => {
             app.volume = v;
@@ -359,9 +371,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             return iced::exit();
         }
         Message::TrayEvent(crate::tray::TrayEvent::StopAdhan) => {
-            if let Some(audio) = &app.audio {
-                audio.stop();
-            }
+            app.audio = None;
         }
         Message::MethodChanged(m) => {
             app.calculation_method = m;

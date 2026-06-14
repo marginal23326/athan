@@ -12,7 +12,9 @@ use iced::{Element, Subscription, Task};
 use std::sync::Arc;
 
 #[derive(Hash, Clone, Copy, PartialEq, Eq)]
-struct TimerId;
+struct TimerId {
+    fast: bool,
+}
 
 #[derive(Clone)]
 struct TrayReceiver(TrayRxHandle);
@@ -56,15 +58,22 @@ fn view(app: &App, id: iced::window::Id) -> Element<'_, Message> {
 }
 
 fn subscription(app: &App) -> Subscription<Message> {
-    let tick = iced::Subscription::run_with(TimerId, |_| {
+    let fast_tick = app.window_id.is_some() || app.audio.as_ref().is_some_and(|a| a.is_playing());
+
+    let tick = iced::Subscription::run_with(TimerId { fast: fast_tick }, |id| {
+        let is_fast = id.fast;
         let (mut tx, rx) = futures_channel::mpsc::channel(1);
         std::thread::spawn(move || {
             loop {
                 let now = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default();
-                let millis_to_next = 1000 - (now.as_millis() % 1000) as u64;
-                std::thread::sleep(std::time::Duration::from_millis(millis_to_next));
+                let millis_to_next = if is_fast {
+                    1000 - (now.as_millis() % 1000) as u64
+                } else {
+                    60_000 - (now.as_millis() % 60_000) as u64
+                };
+                std::thread::sleep(std::time::Duration::from_millis(millis_to_next + 1));
                 if tx.try_send(()).is_err() && tx.is_closed() {
                     break;
                 }
