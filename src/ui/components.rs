@@ -10,7 +10,6 @@ pub fn can_be_float(s: &str) -> bool {
     s.is_empty()
         || s.parse::<f64>().is_ok()
         || matches!(s, "-" | "+" | "." | "-." | "+.")
-        || s.strip_suffix('.').is_some_and(|p| p.parse::<f64>().is_ok())
 }
 
 pub fn labeled_input<'a>(
