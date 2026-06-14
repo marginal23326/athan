@@ -75,8 +75,8 @@ fn subscription(app: &App) -> Subscription<Message> {
                 };
 
                 let target = std::time::Instant::now() + std::time::Duration::from_millis(millis_to_next + 1);
-                while std::time::Instant::now() < target {
-                    std::thread::sleep(std::time::Duration::from_secs(1));
+                while let Some(rem) = target.checked_duration_since(std::time::Instant::now()) {
+                    std::thread::sleep(rem.min(std::time::Duration::from_millis(500)));
                     if tx.is_closed() {
                         return;
                     }
