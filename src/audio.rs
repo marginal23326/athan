@@ -59,9 +59,7 @@ pub fn audio_dir() -> PathBuf {
 
     // Standard data directory
     if let Some(proj) = directories::ProjectDirs::from("", "", "athan") {
-        let path = proj.data_dir().join("audio");
-        let _ = std::fs::create_dir_all(&path);
-        return path;
+        return proj.data_dir().join("audio");
     }
 
     // Fallback
@@ -69,7 +67,6 @@ pub fn audio_dir() -> PathBuf {
     path.pop();
     path.push("data");
     path.push("audio");
-    let _ = std::fs::create_dir_all(&path);
     path
 }
 
@@ -78,6 +75,8 @@ pub fn ensure_audio_files() {
     if dest.join("adhan.ogg").exists() && dest.join("fajr.ogg").exists() {
         return;
     }
+
+    let _ = std::fs::create_dir_all(&dest);
 
     let sources = [
         std::env::current_dir().ok().map(|p| p.join("data").join("audio")),
