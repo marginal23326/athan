@@ -336,9 +336,11 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
                 };
                 audio.play(path);
             }
+            return Task::done(Message::Tick(time::OffsetDateTime::now_utc()));
         }
         Message::StopAdhan => {
             app.audio = None;
+            return Task::done(Message::Tick(time::OffsetDateTime::now_utc()));
         }
         Message::VolumeChanged(v) => {
             app.volume = v;
@@ -391,6 +393,7 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
         }
         Message::TrayEvent(crate::tray::TrayEvent::StopAdhan) => {
             app.audio = None;
+            return Task::done(Message::Tick(time::OffsetDateTime::now_utc()));
         }
         Message::MethodChanged(m) => {
             app.calculation_method = m;
