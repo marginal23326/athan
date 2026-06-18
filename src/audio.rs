@@ -42,11 +42,9 @@ fn try_audio_dir(base: &Path) -> Option<PathBuf> {
 }
 
 pub fn audio_dir() -> PathBuf {
-    // Current directory
-    if let Ok(dir) = std::env::current_dir()
-        && let Some(p) = try_audio_dir(&dir)
-    {
-        return p;
+    // Standard data directory (AppData on Windows)
+    if let Some(proj) = directories::ProjectDirs::from("", "", "athan") {
+        return proj.data_dir().join("audio");
     }
 
     // Exe directory
@@ -57,9 +55,11 @@ pub fn audio_dir() -> PathBuf {
         return p;
     }
 
-    // Standard data directory
-    if let Some(proj) = directories::ProjectDirs::from("", "", "athan") {
-        return proj.data_dir().join("audio");
+    // Current directory
+    if let Ok(dir) = std::env::current_dir()
+        && let Some(p) = try_audio_dir(&dir)
+    {
+        return p;
     }
 
     // Fallback
@@ -83,6 +83,13 @@ pub fn ensure_audio_files() {
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.join("data").join("audio"))),
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| {
+                let p = p.parent()?.parent()?.parent()?;
+                Some(p.to_path_buf())
+            })
+            .map(|p| p.join("data").join("audio")),
     ];
 
     for src in sources.into_iter().flatten() {
