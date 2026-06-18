@@ -89,7 +89,7 @@ fn subscription(app: &App) -> Subscription<Message> {
         });
         iced::futures::stream::unfold(rx, |mut rx| async move {
             use iced::futures::StreamExt;
-            let _ = rx.next().await?;
+            rx.next().await?;
             Some((Message::Tick(time::OffsetDateTime::now_utc()), rx))
         })
     });
@@ -120,14 +120,14 @@ fn subscription(app: &App) -> Subscription<Message> {
         let tray_sub = iced::Subscription::run_with(
             TrayReceiver(rx_arc.clone()),
             |receiver| -> std::pin::Pin<Box<dyn iced::futures::Stream<Item = Message> + Send>> {
-                if let Ok(mut opt) = receiver.0.lock() {
-                    if let Some(rx) = opt.take() {
-                        return Box::pin(iced::futures::stream::unfold(rx, |mut rx| async move {
-                            use iced::futures::StreamExt;
-                            let event = rx.next().await?;
-                            Some((Message::TrayEvent(event), rx))
-                        }));
-                    }
+                if let Ok(mut opt) = receiver.0.lock()
+                    && let Some(rx) = opt.take()
+                {
+                    return Box::pin(iced::futures::stream::unfold(rx, |mut rx| async move {
+                        use iced::futures::StreamExt;
+                        let event = rx.next().await?;
+                        Some((Message::TrayEvent(event), rx))
+                    }));
                 }
                 Box::pin(iced::futures::stream::empty())
             },

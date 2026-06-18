@@ -56,12 +56,11 @@ mod autostart {
 
     pub fn is_enabled() -> bool {
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-        if let Ok(key) = hkcu.open_subkey(REG_KEY) {
-            if let Ok(val) = key.get_value::<String, _>(APP_NAME) {
-                if let Some(cmd) = get_cmd() {
-                    return val == cmd;
-                }
-            }
+        if let Ok(key) = hkcu.open_subkey(REG_KEY)
+            && let Ok(val) = key.get_value::<String, _>(APP_NAME)
+            && let Some(cmd) = get_cmd()
+        {
+            return val == cmd;
         }
         false
     }
@@ -69,10 +68,10 @@ mod autostart {
     pub fn set_enabled(enable: bool) {
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         if enable {
-            if let Some(cmd) = get_cmd() {
-                if let Ok((key, _)) = hkcu.create_subkey(REG_KEY) {
-                    let _ = key.set_value(APP_NAME, &cmd);
-                }
+            if let Some(cmd) = get_cmd()
+                && let Ok((key, _)) = hkcu.create_subkey(REG_KEY)
+            {
+                let _ = key.set_value(APP_NAME, &cmd);
             }
         } else {
             if let Ok(key) = hkcu.open_subkey_with_flags(REG_KEY, KEY_SET_VALUE) {

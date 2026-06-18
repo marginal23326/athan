@@ -194,9 +194,7 @@ impl App {
         let mut has_decimal = false;
 
         for c in s.chars() {
-            if c.is_ascii_digit() {
-                result.push(c);
-            } else if c == '-' && result.is_empty() {
+            if c.is_ascii_digit() || (c == '-' && result.is_empty()) {
                 result.push(c);
             } else if allow_decimal && c == '.' && !has_decimal {
                 has_decimal = true;
@@ -409,44 +407,44 @@ pub fn update(app: &mut App, msg: Message) -> Task<Message> {
             app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.lat_input = s.clone();
-            if let Ok(v) = s.parse::<f64>() {
-                if LAT_RANGE.contains(&v) {
-                    app.location.coordinates.latitude = v;
-                    app.recalculate();
-                }
+            if let Ok(v) = s.parse::<f64>()
+                && LAT_RANGE.contains(&v)
+            {
+                app.location.coordinates.latitude = v;
+                app.recalculate();
             }
         }
         Message::LongitudeChanged(s) => {
             app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.lon_input = s.clone();
-            if let Ok(v) = s.parse::<f64>() {
-                if LON_RANGE.contains(&v) {
-                    app.location.coordinates.longitude = v;
-                    app.recalculate();
-                }
+            if let Ok(v) = s.parse::<f64>()
+                && LON_RANGE.contains(&v)
+            {
+                app.location.coordinates.longitude = v;
+                app.recalculate();
             }
         }
         Message::TimezoneChanged(s) => {
             app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.tz_input = s.clone();
-            if let Ok(v) = s.parse::<f64>() {
-                if TZ_RANGE.contains(&v) {
-                    app.location.timezone_offset = v;
-                    app.recalculate();
-                }
+            if let Ok(v) = s.parse::<f64>()
+                && TZ_RANGE.contains(&v)
+            {
+                app.location.timezone_offset = v;
+                app.recalculate();
             }
         }
         Message::ElevationChanged(s) => {
             app.is_detecting = false;
             let s = App::filter_numeric(&s, true);
             app.inputs.elv_input = s.clone();
-            if let Ok(v) = s.parse::<f64>() {
-                if ELV_RANGE.contains(&v) {
-                    app.location.elevation = v;
-                    app.recalculate();
-                }
+            if let Ok(v) = s.parse::<f64>()
+                && ELV_RANGE.contains(&v)
+            {
+                app.location.elevation = v;
+                app.recalculate();
             }
         }
         Message::LocationNameChanged(s) => {

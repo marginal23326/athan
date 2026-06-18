@@ -36,8 +36,8 @@ fn make_icon() -> ksni::Icon {
         argb.push(chunk[2]); // Blue
     }
     ksni::Icon {
-        width: size as i32,
-        height: size as i32,
+        width: size,
+        height: size,
         data: argb,
     }
 }

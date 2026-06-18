@@ -1,8 +1,8 @@
 use crate::app::{App, Message, SettingsTab};
-use athan::core::{ELV_RANGE, LAT_RANGE, LON_RANGE, TZ_RANGE};
 use crate::ui::components::{adjustment_grid, is_valid_float, labeled_input, labeled_picker, toggle_row};
 use crate::ui::styles;
 use athan::core::*;
+use athan::core::{ELV_RANGE, LAT_RANGE, LON_RANGE, TZ_RANGE};
 
 use iced::widget::text::Wrapping;
 use iced::widget::{Space, button, column, container, row, scrollable, text};
