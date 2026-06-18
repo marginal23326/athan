@@ -297,6 +297,7 @@ struct SunEventsOutputs {
     set: f64,
 }
 
+#[rustfmt::skip]
 fn calculate_geocentric_sun_coords(jd: f64, delta_t: f64) -> GeocentricCoords {
     let jc = (jd - 2451545.0) / 36525.0;
     let jde = jd + delta_t / 86400.0;
