@@ -177,20 +177,30 @@ fn new() -> (App, Task<Message>) {
 }
 
 fn main() {
-    let _minimized = std::env::args().any(|a| a == "--minimized");
+    let minimized = std::env::args().any(|a| a == "--minimized");
 
     #[cfg(feature = "cli")]
-    if !_minimized && std::env::args().len() > 1 {
+    if !minimized && std::env::args().len() > 1 {
         if let Err(e) = athan::cli::run() {
             eprintln!("Error: {e}");
             std::process::exit(1);
         }
         return;
     }
-    launch_gui().expect("GUI error");
+    launch_gui(minimized).expect("GUI error");
 }
 
-fn launch_gui() -> iced::Result {
+fn launch_gui(minimized: bool) -> iced::Result {
+    if minimized {
+        #[cfg(target_os = "linux")]
+        for _ in 0..25 {
+            if std::env::var("WAYLAND_DISPLAY").is_ok() || std::env::var("DISPLAY").is_ok() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }
+    }
+
     iced::daemon(new, update, view)
         .subscription(subscription)
         .theme(theme)
